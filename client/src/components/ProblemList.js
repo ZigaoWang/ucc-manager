@@ -33,8 +33,11 @@ import {
   InputGroup,
   InputLeftElement,
   Flex,
-  Spacer
+  Spacer,
+  Wrap,
+  WrapItem
 } from '@chakra-ui/react';
+import { ChevronDownIcon, SearchIcon } from '@chakra-ui/icons';
 
 const API_BASE_URL = 'http://localhost:4001/api';
 
@@ -74,6 +77,29 @@ const toTitleCase = (str) => {
     .join(' ');
 };
 
+const formatResult = (result) => {
+  if (!result) return 'Unknown';
+  if (result.toLowerCase() === 'time limit exceeded') return 'TLE';
+  return result;
+};
+
+const formatProblemName = (name, platform) => {
+  if (!name) return '';
+  
+  // Remove TLE prefix if present
+  name = name.replace(/^tle-/i, '');
+  
+  // For CSES and Codeforces, use title case
+  if (['cses', 'cf'].includes(platform?.toLowerCase())) {
+    return name.split('-').map(word => 
+      word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+    ).join(' ');
+  }
+  
+  // For other platforms (like USACO), keep original case
+  return name;
+};
+
 const ProblemList = () => {
   const [problems, setProblems] = useState([]);
   const [filteredProblems, setFilteredProblems] = useState([]);
@@ -81,9 +107,11 @@ const ProblemList = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterPlatform, setFilterPlatform] = useState('all');
   const [filterResult, setFilterResult] = useState('all');
+  const [filterTag, setFilterTag] = useState('');
   const [editingTags, setEditingTags] = useState([]);
   const [editingNotes, setEditingNotes] = useState('');
   const [newTag, setNewTag] = useState('');
+  const [allTags, setAllTags] = useState([]);
   const [cardDensity, setCardDensity] = useState(() => {
     const saved = localStorage.getItem('ucc-card-density');
     return saved || 'normal';
@@ -116,7 +144,16 @@ const ProblemList = () => {
 
   useEffect(() => {
     filterProblems();
-  }, [problems, searchQuery, filterPlatform, filterResult]);
+  }, [problems, searchQuery, filterPlatform, filterResult, filterTag]);
+
+  useEffect(() => {
+    // Update allTags whenever problems change
+    const tags = new Set();
+    problems.forEach(problem => {
+      problem.tags?.forEach(tag => tags.add(tag));
+    });
+    setAllTags(Array.from(tags).sort());
+  }, [problems]);
 
   const fetchProblems = async () => {
     try {
@@ -153,13 +190,17 @@ const ProblemList = () => {
       });
     }
 
+    // Tag filter
+    if (filterTag) {
+      filtered = filtered.filter(p => p.tags?.includes(filterTag));
+    }
+
     // Search query
     if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(p => 
-        p.name?.toLowerCase().includes(query) ||
-        p.problemId?.toLowerCase().includes(query) ||
-        p.tags?.some(tag => tag.toLowerCase().includes(query))
+      filtered = filtered.filter(p =>
+        p.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        p.platform?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        p.tags?.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))
       );
     }
 
@@ -288,231 +329,361 @@ const ProblemList = () => {
     setEditingTags(prev => prev.filter(tag => tag !== tagToRemove));
   };
 
-  return (
-    <Container maxW="container.xl">
-      {/* Filters */}
-      <VStack spacing={4} mb={8}>
-        <Flex w="100%" gap={4} wrap="wrap">
-          <InputGroup maxW="400px">
-            <Input
-              placeholder="🔍 Search by name, ID, or tags..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </InputGroup>
+  const handleTagClick = (tag) => {
+    setFilterTag(prevTag => prevTag === tag ? '' : tag);
+  };
 
-          <Select
-            value={filterPlatform}
-            onChange={(e) => setFilterPlatform(e.target.value)}
-            maxW="200px"
-          >
-            <option value="all">All Platforms</option>
-            <option value="usaco">USACO</option>
-            <option value="cses">CSES</option>
-            <option value="cf">CodeForces</option>
-          </Select>
-
-          <Select
-            value={filterResult}
-            onChange={(e) => setFilterResult(e.target.value)}
-            maxW="200px"
-          >
-            <option value="all">All Results</option>
-            <option value="accepted">Accepted</option>
-            <option value="tle">Time Limit Exceeded</option>
-          </Select>
-
-          <Select
-            value={cardDensity}
-            onChange={(e) => {
-              setCardDensity(e.target.value);
-              localStorage.setItem('ucc-card-density', e.target.value);
-            }}
-            maxW="200px"
-          >
-            <option value="compact">Compact View</option>
-            <option value="normal">Normal View</option>
-            <option value="spacious">Spacious View</option>
-          </Select>
-        </Flex>
-
-        <Text fontSize="sm" color="gray.600">
-          Showing {filteredProblems.length} of {problems.length} problems
-        </Text>
-      </VStack>
-
-      {/* Problem Grid */}
-      <SimpleGrid 
-        columns={{ base: 1, sm: 2, md: 3, lg: densitySettings[cardDensity].columns }} 
-        spacing={densitySettings[cardDensity].spacing}
-      >
-        {filteredProblems.map((problem, index) => (
-          <Box
-            key={problem.problemId || index}
-            bg="white"
-            p={densitySettings[cardDensity].padding}
-            borderRadius="xl"
-            border="1px"
-            borderColor="gray.100"
-            _hover={{
-              transform: 'translateY(-2px)',
-              boxShadow: 'sm',
-              borderColor: 'gray.200',
-            }}
-            transition="all 0.2s"
+  const renderTags = (tags, showClose = false) => {
+    if (!tags || tags.length === 0) return null;
+    return (
+      <HStack spacing={2} mt={2} wrap="wrap">
+        {tags.map((tag, index) => (
+          <Tag
+            key={index}
+            size="sm"
+            variant={filterTag === tag ? "solid" : "subtle"}
+            colorScheme="blue"
             cursor="pointer"
-            onClick={() => handleViewProblem(problem)}
+            onClick={() => handleTagClick(tag)}
           >
-            <VStack align="stretch" spacing={4}>
-              <HStack spacing={densitySettings[cardDensity].spacing === 4 ? 1 : 3}>
-                <Badge
-                  colorScheme={getPlatformColor(problem.platform)}
-                  variant="subtle"
-                  px={densitySettings[cardDensity].spacing === 4 ? 2 : 3}
-                  py={0.5}
-                  borderRadius="md"
-                  fontSize={densitySettings[cardDensity].spacing === 4 ? "xs" : "sm"}
-                >
-                  {problem.platform.toUpperCase()}
-                </Badge>
-                <Badge
-                  colorScheme={getResultColor(problem.result)}
-                  variant="outline"
-                  px={densitySettings[cardDensity].spacing === 4 ? 2 : 3}
-                  py={0.5}
-                  borderRadius="md"
-                  fontSize={densitySettings[cardDensity].spacing === 4 ? "xs" : "sm"}
-                >
-                  {problem.result === 'Time Limit Exceeded' ? 'TLE' : problem.result}
-                </Badge>
-              </HStack>
-              
-              <Box>
-                <Text
-                  fontSize="sm"
-                  color="gray.500"
-                  fontFamily="mono"
-                  mb={2}
-                >
-                  {problem.problemId}
-                </Text>
-                <Heading size="md" color="gray.900">
-                  {['cses', 'cf'].includes(problem.platform?.toLowerCase()) 
-                    ? toTitleCase(problem.name)
-                    : problem.name}
-                </Heading>
-              </Box>
-
-              <Text
-                fontSize="sm"
-                color="gray.600"
-                noOfLines={2}
-              >
-                {problem.notes || 'No notes added'}
-              </Text>
-
-              <HStack spacing={2} wrap="wrap">
-                {problem.tags?.map((tag) => (
-                  <Tag
-                    key={tag}
-                    size="sm"
-                    variant="subtle"
-                    colorScheme="gray"
-                    borderRadius="full"
-                  >
-                    {tag}
-                  </Tag>
-                ))}
-              </HStack>
-            </VStack>
-          </Box>
+            {tag}
+            {showClose && (
+              <TagCloseButton
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setEditingTags(prev => prev.filter(t => t !== tag));
+                }}
+              />
+            )}
+          </Tag>
         ))}
-      </SimpleGrid>
+      </HStack>
+    );
+  };
 
-      {/* Problem Modal */}
-      <Modal isOpen={isEditOpen} onClose={onEditClose} size="lg">
-        <ModalOverlay />
-        <ModalContent>
-          <ModalHeader>
-            {selectedProblem?.name}
-            <Text fontSize="sm" color="gray.500" mt={1}>
-              {selectedProblem?.platform} - {selectedProblem?.problemId}
-            </Text>
-          </ModalHeader>
-          <ModalCloseButton />
+  const renderAllTags = () => {
+    if (allTags.length === 0) return null;
+    return (
+      <Box mb={4}>
+        <Text fontWeight="bold" mb={2}>Filter by Tag:</Text>
+        <HStack spacing={2} wrap="wrap">
+          {allTags.map(tag => (
+            <Tag
+              key={tag}
+              size="md"
+              variant={filterTag === tag ? "solid" : "subtle"}
+              colorScheme="blue"
+              cursor="pointer"
+              onClick={() => handleTagClick(tag)}
+            >
+              {tag}
+              <Badge ml={2} colorScheme="blue" variant={filterTag === tag ? "solid" : "outline"}>
+                {problems.filter(p => p.tags?.includes(tag)).length}
+              </Badge>
+            </Tag>
+          ))}
+        </HStack>
+      </Box>
+    );
+  };
+
+  const renderProblemCard = (problem) => {
+    const formattedName = formatProblemName(problem.name, problem.platform);
+    const formattedResult = formatResult(problem.result);
+    
+    return (
+      <Box
+        key={problem.problemId}
+        bg="white"
+        p={densitySettings[cardDensity].padding}
+        borderRadius="xl"
+        boxShadow="sm"
+        border="1px"
+        borderColor="gray.100"
+        onClick={() => handleViewProblem(problem)}
+        cursor="pointer"
+        _hover={{
+          transform: 'translateY(-2px)',
+          boxShadow: 'md',
+          borderColor: 'blue.100'
+        }}
+        transition="all 0.2s"
+      >
+        <VStack align="stretch" spacing={3}>
+          <HStack justify="space-between">
+            <Badge
+              colorScheme={getPlatformColor(problem.platform)}
+              variant="subtle"
+              px={3}
+              py={1}
+              borderRadius="md"
+              fontSize="sm"
+              textTransform="uppercase"
+              fontWeight="bold"
+            >
+              {problem.platform.toUpperCase()}
+            </Badge>
+            <Badge
+              colorScheme={getResultColor(problem.result)}
+              variant={formattedResult === 'TLE' ? 'solid' : 'outline'}
+              px={3}
+              py={1}
+              borderRadius="md"
+              fontSize="sm"
+            >
+              {formattedResult}
+            </Badge>
+          </HStack>
           
-          <ModalBody pb={6}>
-            <VStack spacing={4} align="stretch">
-              {/* Source Code */}
-              <Box>
-                <Text mb={2} fontWeight="semibold">Source Code</Text>
-                <Box
-                  p={4}
-                  bg="gray.50"
-                  borderRadius="md"
-                  fontFamily="mono"
-                  fontSize="sm"
-                  whiteSpace="pre-wrap"
-                  overflowX="auto"
-                  maxH="300px"
-                  overflowY="auto"
-                >
-                  {codeContent || 'Loading source code...'}
-                </Box>
-              </Box>
+          <VStack align="stretch" spacing={1}>
+            <Text
+              fontSize="xs"
+              color="gray.500"
+              fontFamily="mono"
+            >
+              #{problem.problemId}
+            </Text>
+            <Heading
+              size="sm"
+              noOfLines={2}
+              color="gray.800"
+            >
+              {formattedName}
+            </Heading>
+          </VStack>
 
-              {/* Tags */}
+          {renderTags(problem.tags)}
+          
+          {problem.notes && (
+            <Text
+              fontSize="sm"
+              color="gray.600"
+              noOfLines={2}
+              mt={1}
+            >
+              {problem.notes}
+            </Text>
+          )}
+        </VStack>
+      </Box>
+    );
+  };
+
+  return (
+    <Container maxW="container.xl" py={8}>
+      <VStack spacing={6} align="stretch">
+        <Box bg="white" p={6} borderRadius="xl" boxShadow="sm" border="1px" borderColor="gray.100">
+          <VStack spacing={6} align="stretch">
+            <HStack justify="space-between">
+              <Heading size="lg" color="gray.800">Problems</Heading>
+              <Menu>
+                <MenuButton as={Button} rightIcon={<ChevronDownIcon />} size="sm">
+                  Density: {toTitleCase(cardDensity)}
+                </MenuButton>
+                <MenuList>
+                  <MenuItem onClick={() => {
+                    setCardDensity('compact');
+                    localStorage.setItem('ucc-card-density', 'compact');
+                  }}>Compact</MenuItem>
+                  <MenuItem onClick={() => {
+                    setCardDensity('normal');
+                    localStorage.setItem('ucc-card-density', 'normal');
+                  }}>Normal</MenuItem>
+                  <MenuItem onClick={() => {
+                    setCardDensity('spacious');
+                    localStorage.setItem('ucc-card-density', 'spacious');
+                  }}>Spacious</MenuItem>
+                </MenuList>
+              </Menu>
+            </HStack>
+
+            <HStack spacing={4}>
+              <InputGroup>
+                <InputLeftElement pointerEvents="none">
+                  <SearchIcon color="gray.400" />
+                </InputLeftElement>
+                <Input
+                  placeholder="Search problems..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  bg="gray.50"
+                  _focus={{
+                    bg: "white",
+                    borderColor: "blue.400"
+                  }}
+                />
+              </InputGroup>
+              <Select
+                value={filterPlatform}
+                onChange={(e) => setFilterPlatform(e.target.value)}
+                w="200px"
+                bg="gray.50"
+              >
+                <option value="all">All Platforms</option>
+                <option value="usaco">USACO</option>
+                <option value="cses">CSES</option>
+                <option value="cf">Codeforces</option>
+              </Select>
+              <Select
+                value={filterResult}
+                onChange={(e) => setFilterResult(e.target.value)}
+                w="200px"
+                bg="gray.50"
+              >
+                <option value="all">All Results</option>
+                <option value="accepted">Accepted</option>
+                <option value="tle">TLE</option>
+              </Select>
+            </HStack>
+
+            {allTags.length > 0 && (
               <Box>
-                <Text mb={2} fontWeight="semibold">Tags</Text>
-                <Flex wrap="wrap" gap={2} mb={2}>
-                  {editingTags.map((tag, index) => (
-                    <Tag 
-                      key={index}
-                      colorScheme="blue"
-                      size="md"
-                    >
-                      {tag}
-                      <TagCloseButton onClick={() => handleRemoveTag(tag)} />
-                    </Tag>
+                <Text fontWeight="medium" color="gray.600" mb={2}>Tags</Text>
+                <Wrap spacing={2}>
+                  {allTags.map(tag => (
+                    <WrapItem key={tag}>
+                      <Tag
+                        size="md"
+                        variant={filterTag === tag ? "solid" : "subtle"}
+                        colorScheme="blue"
+                        cursor="pointer"
+                        onClick={() => handleTagClick(tag)}
+                        _hover={{
+                          transform: 'translateY(-1px)',
+                          shadow: 'sm'
+                        }}
+                        transition="all 0.2s"
+                      >
+                        {tag}
+                        <Badge
+                          ml={2}
+                          colorScheme="blue"
+                          variant={filterTag === tag ? "solid" : "outline"}
+                        >
+                          {problems.filter(p => p.tags?.includes(tag)).length}
+                        </Badge>
+                      </Tag>
+                    </WrapItem>
                   ))}
-                </Flex>
-                <HStack>
-                  <Input
-                    placeholder="Add a tag"
-                    value={newTag}
-                    onChange={(e) => setNewTag(e.target.value)}
-                    onKeyPress={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        handleAddTag();
-                      }
+                </Wrap>
+              </Box>
+            )}
+            
+            <Text fontSize="sm" color="gray.500">
+              Showing {filteredProblems.length} of {problems.length} problems
+            </Text>
+          </VStack>
+        </Box>
+
+        <SimpleGrid
+          columns={densitySettings[cardDensity].columns}
+          spacing={densitySettings[cardDensity].spacing}
+        >
+          {filteredProblems.map(renderProblemCard)}
+        </SimpleGrid>
+
+        {/* Problem Modal */}
+        <Modal isOpen={isEditOpen} onClose={onEditClose} size="xl">
+          <ModalOverlay />
+          <ModalContent>
+            <ModalHeader>
+              <VStack align="stretch" spacing={1}>
+                <Text fontSize="sm" color="gray.500">
+                  {selectedProblem?.platform?.toUpperCase()} #{selectedProblem?.problemId}
+                </Text>
+                <Heading size="lg">
+                  {selectedProblem && formatProblemName(selectedProblem.name, selectedProblem.platform)}
+                </Heading>
+              </VStack>
+            </ModalHeader>
+            <ModalCloseButton />
+            
+            <ModalBody pb={6}>
+              <VStack spacing={6} align="stretch">
+                {/* Source Code */}
+                <Box>
+                  <Text fontWeight="medium" color="gray.700" mb={2}>Source Code</Text>
+                  <Box
+                    p={4}
+                    bg="gray.50"
+                    borderRadius="md"
+                    fontFamily="mono"
+                    fontSize="sm"
+                    whiteSpace="pre-wrap"
+                    overflowX="auto"
+                    maxH="300px"
+                    overflowY="auto"
+                    border="1px"
+                    borderColor="gray.200"
+                  >
+                    {codeContent || 'Loading source code...'}
+                  </Box>
+                </Box>
+
+                {/* Tags */}
+                <Box>
+                  <Text fontWeight="medium" color="gray.700" mb={2}>Tags</Text>
+                  <VStack align="stretch" spacing={3}>
+                    <Wrap spacing={2}>
+                      {editingTags.map((tag, index) => (
+                        <Tag 
+                          key={index}
+                          colorScheme="blue"
+                          size="md"
+                        >
+                          {tag}
+                          <TagCloseButton onClick={() => handleRemoveTag(tag)} />
+                        </Tag>
+                      ))}
+                    </Wrap>
+                    <HStack>
+                      <Input
+                        placeholder="Add a tag"
+                        value={newTag}
+                        onChange={(e) => setNewTag(e.target.value)}
+                        onKeyPress={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleAddTag();
+                          }
+                        }}
+                      />
+                      <Button colorScheme="blue" onClick={handleAddTag}>
+                        Add
+                      </Button>
+                    </HStack>
+                  </VStack>
+                </Box>
+
+                {/* Notes */}
+                <Box>
+                  <Text fontWeight="medium" color="gray.700" mb={2}>Notes</Text>
+                  <Textarea
+                    value={editingNotes}
+                    onChange={(e) => setEditingNotes(e.target.value)}
+                    placeholder="Add notes here..."
+                    rows={6}
+                    bg="gray.50"
+                    _focus={{
+                      bg: "white",
+                      borderColor: "blue.400"
                     }}
                   />
-                  <Button onClick={handleAddTag}>Add</Button>
-                </HStack>
-              </Box>
+                </Box>
+              </VStack>
+            </ModalBody>
 
-              {/* Notes */}
-              <Box>
-                <Text mb={2} fontWeight="semibold">Notes</Text>
-                <Textarea
-                  value={editingNotes}
-                  onChange={(e) => setEditingNotes(e.target.value)}
-                  placeholder="Add notes here..."
-                  rows={6}
-                />
-              </Box>
-            </VStack>
-          </ModalBody>
-
-          <ModalFooter>
-            <Button colorScheme="blue" mr={3} onClick={handleSaveChanges}>
-              Save
-            </Button>
-            <Button onClick={onEditClose}>Cancel</Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
+            <ModalFooter bg="gray.50" borderBottomRadius="xl">
+              <Button colorScheme="blue" mr={3} onClick={handleSaveChanges}>
+                Save Changes
+              </Button>
+              <Button variant="ghost" onClick={onEditClose}>
+                Cancel
+              </Button>
+            </ModalFooter>
+          </ModalContent>
+        </Modal>
+      </VStack>
     </Container>
   );
 };
