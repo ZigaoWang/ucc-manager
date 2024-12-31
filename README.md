@@ -28,7 +28,7 @@ A web application for managing competitive programming solutions. Track your sol
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/ucc-manager.git
+   git clone https://github.com/ZigaoWang/ucc-manager.git
    cd ucc-manager
    ```
 
@@ -60,7 +60,7 @@ A web application for managing competitive programming solutions. Track your sol
    npm start
    ```
 
-5. Access the application at `http://localhost:3000`
+5. Access the application at `http://localhost:4000`
 
 ## Deployment
 
