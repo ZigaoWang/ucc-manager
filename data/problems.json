@@ -1,0 +1,134 @@
+[
+  {
+    "platform": "usaco",
+    "problemId": "595",
+    "name": "Problem 595",
+    "code": "",
+    "tags": [],
+    "notes": "",
+    "result": "Accepted",
+    "createdAt": "2024-12-31T12:47:57.024Z",
+    "sourceFile": "/Users/zigaowang/Documents/GitHub/ucc-manager/usaco/595/main.cpp"
+  },
+  {
+    "platform": "usaco",
+    "problemId": "668",
+    "name": "Problem 668",
+    "code": "",
+    "tags": [],
+    "notes": "",
+    "result": "Accepted",
+    "createdAt": "2024-12-31T12:47:57.438Z",
+    "sourceFile": "/Users/zigaowang/Documents/GitHub/ucc-manager/usaco/668/main.cpp"
+  },
+  {
+    "platform": "usaco",
+    "problemId": "788",
+    "name": "Problem 788",
+    "code": "",
+    "tags": [],
+    "notes": "",
+    "result": "Accepted",
+    "createdAt": "2024-12-31T12:47:57.988Z",
+    "sourceFile": "/Users/zigaowang/Documents/GitHub/ucc-manager/usaco/788/main.cpp"
+  },
+  {
+    "platform": "usaco",
+    "problemId": "895",
+    "name": "Problem 895",
+    "code": "",
+    "tags": [],
+    "notes": "",
+    "result": "Accepted",
+    "createdAt": "2024-12-31T12:47:58.395Z",
+    "sourceFile": "/Users/zigaowang/Documents/GitHub/ucc-manager/usaco/895/main.cpp"
+  },
+  {
+    "platform": "cses",
+    "problemId": "1068",
+    "name": "weird algorithm",
+    "code": "",
+    "tags": [],
+    "notes": "",
+    "result": "Accepted",
+    "createdAt": "2024-12-31T12:47:59.214Z",
+    "sourceFile": "/Users/zigaowang/Documents/GitHub/ucc-manager/cses/1068-weird-algorithm/main.cpp"
+  },
+  {
+    "platform": "cses",
+    "problemId": "1069",
+    "name": "repetitions",
+    "code": "",
+    "tags": [],
+    "notes": "",
+    "result": "Accepted",
+    "createdAt": "2024-12-31T12:47:59.627Z",
+    "sourceFile": "/Users/zigaowang/Documents/GitHub/ucc-manager/cses/1069-repetitions/main.cpp"
+  },
+  {
+    "platform": "cses",
+    "problemId": "1083",
+    "name": "missing number",
+    "code": "",
+    "tags": [],
+    "notes": "",
+    "result": "Accepted",
+    "createdAt": "2024-12-31T12:48:00.033Z",
+    "sourceFile": "/Users/zigaowang/Documents/GitHub/ucc-manager/cses/1083-missing-number/main.cpp"
+  },
+  {
+    "platform": "cses",
+    "problemId": "1192",
+    "name": "counting rooms",
+    "code": "",
+    "tags": [],
+    "notes": "",
+    "result": "Accepted",
+    "createdAt": "2024-12-31T12:48:00.442Z",
+    "sourceFile": "/Users/zigaowang/Documents/GitHub/ucc-manager/cses/1192-counting-rooms/main.cpp"
+  },
+  {
+    "platform": "cses",
+    "problemId": "1666",
+    "name": "building roads",
+    "code": "",
+    "tags": [],
+    "notes": "",
+    "result": "Accepted",
+    "createdAt": "2024-12-31T12:48:00.840Z",
+    "sourceFile": "/Users/zigaowang/Documents/GitHub/ucc-manager/cses/1666-building-roads/main.cpp"
+  },
+  {
+    "platform": "cses",
+    "problemId": "1674",
+    "name": "subordinates",
+    "code": "",
+    "tags": [],
+    "notes": "",
+    "result": "Accepted",
+    "createdAt": "2024-12-31T12:48:01.226Z",
+    "sourceFile": "/Users/zigaowang/Documents/GitHub/ucc-manager/cses/1674-subordinates/main.cpp"
+  },
+  {
+    "platform": "cses",
+    "problemId": "1193",
+    "name": "tle-labyrinth",
+    "code": "",
+    "tags": [],
+    "notes": "",
+    "result": "Time Limit Exceeded",
+    "createdAt": "2024-12-31T12:48:01.602Z",
+    "sourceFile": "/Users/zigaowang/Documents/GitHub/ucc-manager/cses/tle-1193-labyrinth/main.cpp"
+  },
+  {
+    "platform": "cf",
+    "problemId": "279B",
+    "name": "two pointer",
+    "code": "",
+    "tags": [],
+    "notes": "",
+    "result": "Accepted",
+    "createdAt": "2024-12-31T12:48:02.491Z",
+    "sourceFile": "/Users/zigaowang/Documents/GitHub/ucc-manager/cf/279-b-two-pointer/main.cpp"
+  }
+]
