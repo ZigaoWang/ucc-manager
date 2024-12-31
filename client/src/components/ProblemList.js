@@ -336,24 +336,26 @@ const ProblemList = () => {
             onClick={() => handleViewProblem(problem)}
           >
             <VStack align="stretch" spacing={4}>
-              <HStack spacing={3}>
+              <HStack spacing={densitySettings[cardDensity].spacing === 4 ? 1 : 3}>
                 <Badge
                   colorScheme={getPlatformColor(problem.platform)}
                   variant="subtle"
-                  px={3}
-                  py={1}
+                  px={densitySettings[cardDensity].spacing === 4 ? 2 : 3}
+                  py={0.5}
                   borderRadius="md"
+                  fontSize={densitySettings[cardDensity].spacing === 4 ? "xs" : "sm"}
                 >
                   {problem.platform.toUpperCase()}
                 </Badge>
                 <Badge
                   colorScheme={problem.result === 'Accepted' ? 'green' : 'orange'}
                   variant="outline"
-                  px={3}
-                  py={1}
+                  px={densitySettings[cardDensity].spacing === 4 ? 2 : 3}
+                  py={0.5}
                   borderRadius="md"
+                  fontSize={densitySettings[cardDensity].spacing === 4 ? "xs" : "sm"}
                 >
-                  {problem.result}
+                  {problem.result === 'Time Limit Exceeded' ? 'TLE' : problem.result}
                 </Badge>
               </HStack>
               
@@ -422,7 +424,7 @@ const ProblemList = () => {
                   py={1}
                   borderRadius="md"
                 >
-                  {selectedProblem?.result}
+                  {selectedProblem?.result === 'Time Limit Exceeded' ? 'TLE' : selectedProblem?.result}
                 </Badge>
               </HStack>
               <Box>

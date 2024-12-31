@@ -1,0 +1,15 @@
+feat(ui): improve card density and badge display
+
+- Add responsive card density settings (3/4/5 columns)
+- Fix badge overflow in compact view
+- Abbreviate 'Time Limit Exceeded' to 'TLE'
+- Add persistent density preferences
+- Adjust spacing and padding for each density level
+
+The changes improve the UI by:
+1. Making badges more compact in dense view
+2. Using smaller font size for badges in compact mode
+3. Reducing padding and spacing between elements
+4. Ensuring consistent display across all view modes
+
+Resolves: Badge overflow issue in compact view
