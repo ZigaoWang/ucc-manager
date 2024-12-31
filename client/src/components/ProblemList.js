@@ -10,6 +10,7 @@ import {
   ModalOverlay,
   ModalContent,
   ModalHeader,
+  ModalFooter,
   ModalBody,
   ModalCloseButton,
   useDisclosure,
@@ -39,10 +40,9 @@ const API_BASE_URL = 'http://localhost:4001';
 const getPlatformColor = (platform) => {
   switch ((platform || '').toLowerCase()) {
     case 'usaco':
-      return 'orange';
-    case 'cses':
       return 'purple';
-    case 'codeforces':
+    case 'cses':
+      return 'blue';
     case 'cf':
       return 'red';
     default:
@@ -64,6 +64,15 @@ const getResultColor = (result) => {
   }
 };
 
+const toTitleCase = (str) => {
+  if (!str) return '';
+  return str
+    .toLowerCase()
+    .split('-')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+};
+
 const ProblemList = () => {
   const [problems, setProblems] = useState([]);
   const [filteredProblems, setFilteredProblems] = useState([]);
@@ -71,6 +80,27 @@ const ProblemList = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterPlatform, setFilterPlatform] = useState('all');
   const [filterResult, setFilterResult] = useState('all');
+  const [cardDensity, setCardDensity] = useState(() => {
+    const saved = localStorage.getItem('ucc-card-density');
+    return saved || 'normal';
+  });
+  const densitySettings = {
+    compact: {
+      columns: 5,
+      padding: 4,
+      spacing: 4
+    },
+    normal: {
+      columns: 4,
+      padding: 6,
+      spacing: 5
+    },
+    spacious: {
+      columns: 3,
+      padding: 8,
+      spacing: 6
+    }
+  };
   const { isOpen: isEditOpen, onOpen: onEditOpen, onClose: onEditClose } = useDisclosure();
   const { isOpen: isCodeOpen, onOpen: onCodeOpen, onClose: onCodeClose } = useDisclosure();
   const [editingTags, setEditingTags] = useState([]);
@@ -228,11 +258,16 @@ const ProblemList = () => {
     }
   };
 
+  const handleDensityChange = (newDensity) => {
+    setCardDensity(newDensity);
+    localStorage.setItem('ucc-card-density', newDensity);
+  };
+
   return (
-    <Container maxW="container.xl" py={8}>
+    <Container maxW="container.xl">
       {/* Filters */}
       <VStack spacing={4} mb={8}>
-        <Flex w="100%" gap={4}>
+        <Flex w="100%" gap={4} wrap="wrap">
           <InputGroup maxW="400px">
             <Input
               placeholder="🔍 Search by name, ID, or tags..."
@@ -240,6 +275,7 @@ const ProblemList = () => {
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </InputGroup>
+
           <Select
             value={filterPlatform}
             onChange={(e) => setFilterPlatform(e.target.value)}
@@ -250,6 +286,7 @@ const ProblemList = () => {
             <option value="cses">CSES</option>
             <option value="cf">CodeForces</option>
           </Select>
+
           <Select
             value={filterResult}
             onChange={(e) => setFilterResult(e.target.value)}
@@ -259,171 +296,204 @@ const ProblemList = () => {
             <option value="accepted">Accepted</option>
             <option value="tle">Time Limit Exceeded</option>
           </Select>
+
+          <Select
+            value={cardDensity}
+            onChange={(e) => handleDensityChange(e.target.value)}
+            maxW="200px"
+          >
+            <option value="compact">Compact View</option>
+            <option value="normal">Normal View</option>
+            <option value="spacious">Spacious View</option>
+          </Select>
         </Flex>
-        <Text color="gray.500" alignSelf="flex-start">
+
+        <Text fontSize="sm" color="gray.600">
           Showing {filteredProblems.length} of {problems.length} problems
         </Text>
       </VStack>
 
       {/* Problem Grid */}
-      <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={6}>
-        {filteredProblems.map((problem) => {
-          const resultColor = getResultColor(problem.result);
-          const platformColor = getPlatformColor(problem.platform);
-          const isTLE = problem.name?.toLowerCase().startsWith('tle-');
-
-          return (
-            <Box
-              key={problem._id || Math.random()}
-              borderWidth="1px"
-              borderRadius="lg"
-              overflow="hidden"
-              p={4}
-              boxShadow="sm"
-              bg="white"
-              _hover={{ boxShadow: 'md', transform: 'translateY(-2px)' }}
-              transition="all 0.2s"
-              cursor="pointer"
-              onClick={() => handleViewProblem(problem)}
-            >
-              <VStack align="stretch" spacing={4}>
-                {/* Header */}
-                <Box>
-                  <HStack spacing={2} mb={2}>
-                    <Badge colorScheme={platformColor}>{(problem.platform || 'Unknown').toUpperCase()}</Badge>
-                    <Text fontWeight="bold">{problem.problemId || 'No ID'}</Text>
-                    <Badge colorScheme={resultColor}>
-                      {isTLE ? 'Time Limit Exceeded' : problem.result || 'Unknown'}
-                    </Badge>
-                  </HStack>
-                  <Heading size="sm" noOfLines={2}>
-                    {(problem.name || 'Untitled Problem').replace(/^tle-/i, '')}
-                  </Heading>
-                </Box>
-
-                {/* Tags */}
-                {problem.tags && problem.tags.length > 0 && (
-                  <HStack spacing={2} wrap="wrap">
-                    {problem.tags.map((tag, index) => (
-                      <Tag key={index} size="sm" colorScheme="blue">
-                        {tag}
-                      </Tag>
-                    ))}
-                  </HStack>
-                )}
-
-                {/* Notes Preview */}
-                {problem.notes && (
-                  <Text fontSize="sm" color="gray.600" noOfLines={2}>
-                    {problem.notes}
-                  </Text>
-                )}
-              </VStack>
-            </Box>
-          );
-        })}
-      </SimpleGrid>
-
-      {/* Problem Details Modal */}
-      <Modal isOpen={isEditOpen} onClose={onEditClose} size="xl">
-        <ModalOverlay />
-        <ModalContent>
-          <ModalHeader>
-            <HStack spacing={2}>
-              <Badge colorScheme={getPlatformColor(selectedProblem?.platform)}>
-                {(selectedProblem?.platform || 'Unknown').toUpperCase()}
-              </Badge>
-              <Text>{selectedProblem?.problemId || 'No ID'}</Text>
-              <Badge colorScheme={getResultColor(selectedProblem?.result)}>
-                {selectedProblem?.name?.toLowerCase().startsWith('tle-')
-                  ? 'Time Limit Exceeded'
-                  : selectedProblem?.result || 'Unknown'}
-              </Badge>
-            </HStack>
-          </ModalHeader>
-          <ModalCloseButton />
-          <ModalBody pb={6}>
-            <VStack spacing={6} align="stretch">
-              {/* Problem Name */}
+      <SimpleGrid 
+        columns={{ base: 1, sm: 2, md: 3, lg: densitySettings[cardDensity].columns }} 
+        spacing={densitySettings[cardDensity].spacing}
+      >
+        {filteredProblems.map((problem) => (
+          <Box
+            key={problem._id}
+            bg="white"
+            p={densitySettings[cardDensity].padding}
+            borderRadius="xl"
+            border="1px"
+            borderColor="gray.100"
+            _hover={{
+              transform: 'translateY(-2px)',
+              boxShadow: 'sm',
+              borderColor: 'gray.200',
+            }}
+            transition="all 0.2s"
+            cursor="pointer"
+            onClick={() => handleViewProblem(problem)}
+          >
+            <VStack align="stretch" spacing={4}>
+              <HStack spacing={3}>
+                <Badge
+                  colorScheme={getPlatformColor(problem.platform)}
+                  variant="subtle"
+                  px={3}
+                  py={1}
+                  borderRadius="md"
+                >
+                  {problem.platform.toUpperCase()}
+                </Badge>
+                <Badge
+                  colorScheme={problem.result === 'Accepted' ? 'green' : 'orange'}
+                  variant="outline"
+                  px={3}
+                  py={1}
+                  borderRadius="md"
+                >
+                  {problem.result}
+                </Badge>
+              </HStack>
+              
               <Box>
-                <Text fontWeight="bold" mb={2}>Problem Name:</Text>
-                <Text fontSize="lg">
-                  {(selectedProblem?.name || 'Untitled Problem').replace(/^tle-/i, '')}
+                <Text
+                  fontSize="sm"
+                  color="gray.500"
+                  fontFamily="mono"
+                  mb={2}
+                >
+                  {problem.problemId}
                 </Text>
+                <Heading size="md" color="gray.900">
+                  {['cses', 'cf'].includes(problem.platform?.toLowerCase()) 
+                    ? toTitleCase(problem.name)
+                    : problem.name}
+                </Heading>
               </Box>
 
+              <Text
+                fontSize="sm"
+                color="gray.600"
+                noOfLines={2}
+              >
+                {problem.notes || 'No notes added'}
+              </Text>
+
+              <HStack spacing={2} wrap="wrap">
+                {problem.tags?.map((tag) => (
+                  <Tag
+                    key={tag}
+                    size="sm"
+                    variant="subtle"
+                    colorScheme="gray"
+                    borderRadius="full"
+                  >
+                    {tag}
+                  </Tag>
+                ))}
+              </HStack>
+            </VStack>
+          </Box>
+        ))}
+      </SimpleGrid>
+
+      {/* Problem Modal */}
+      <Modal isOpen={isEditOpen} onClose={onEditClose} size="2xl">
+        <ModalOverlay backdropFilter="blur(10px)" />
+        <ModalContent bg="white">
+          <ModalHeader borderBottom="1px" borderColor="gray.100" pb={4}>
+            <VStack align="stretch" spacing={3}>
+              <HStack spacing={3}>
+                <Badge
+                  colorScheme={getPlatformColor(selectedProblem?.platform)}
+                  variant="subtle"
+                  px={3}
+                  py={1}
+                  borderRadius="md"
+                >
+                  {selectedProblem?.platform.toUpperCase()}
+                </Badge>
+                <Badge
+                  colorScheme={selectedProblem?.result === 'Accepted' ? 'green' : 'orange'}
+                  variant="outline"
+                  px={3}
+                  py={1}
+                  borderRadius="md"
+                >
+                  {selectedProblem?.result}
+                </Badge>
+              </HStack>
+              <Box>
+                <Text fontSize="sm" color="gray.500" fontFamily="mono">
+                  {selectedProblem?.problemId}
+                </Text>
+                <Heading size="lg" color="gray.900">
+                  {['cses', 'cf'].includes(selectedProblem?.platform?.toLowerCase())
+                    ? toTitleCase(selectedProblem?.name)
+                    : selectedProblem?.name}
+                </Heading>
+              </Box>
+            </VStack>
+          </ModalHeader>
+          <ModalCloseButton />
+          <ModalBody py={6}>
+            <VStack align="stretch" spacing={6}>
               {/* Source Code */}
               <Box>
-                <Text fontWeight="bold" mb={2}>Source Code:</Text>
+                <Text fontWeight="medium" color="gray.700" mb={2}>Source Code</Text>
                 <Box
                   bg="gray.50"
                   p={4}
                   borderRadius="md"
-                  fontFamily="monospace"
+                  fontFamily="mono"
                   fontSize="sm"
                   whiteSpace="pre-wrap"
                   overflowX="auto"
                   maxH="300px"
                   overflowY="auto"
-                  mb={2}
+                  border="1px"
+                  borderColor="gray.100"
                 >
                   {codeContent || 'Loading...'}
                 </Box>
-                <Link 
-                  color="blue.500" 
-                  href={selectedProblem && getGitHubUrl(selectedProblem)} 
-                  isExternal
-                >
-                  View on GitHub
-                </Link>
               </Box>
 
               {/* Tags */}
               <Box>
-                <Text fontWeight="bold" mb={2}>Tags:</Text>
-                <HStack spacing={2} mb={2} wrap="wrap">
-                  {editingTags.map((tag, index) => (
-                    <Tag key={index} size="md" colorScheme="blue">
-                      {tag}
-                      <Button
-                        size="xs"
-                        ml={1}
-                        onClick={() => handleRemoveTag(tag)}
-                        variant="ghost"
-                      >
-                        ×
-                      </Button>
-                    </Tag>
-                  ))}
-                </HStack>
-                <HStack>
-                  <Input
-                    placeholder="Add new tag"
-                    value={newTag}
-                    onChange={(e) => setNewTag(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && handleAddTag()}
-                  />
-                  <Button onClick={handleAddTag}>Add</Button>
-                </HStack>
+                <Text fontWeight="medium" color="gray.700" mb={2}>Tags</Text>
+                <Input
+                  placeholder="Add tags (comma separated)"
+                  value={editingTags.join(', ')}
+                  onChange={(e) => setEditingTags(e.target.value.split(',').map(tag => tag.trim()).filter(tag => tag))}
+                  bg="white"
+                />
               </Box>
 
               {/* Notes */}
               <Box>
-                <Text fontWeight="bold" mb={2}>Notes:</Text>
+                <Text fontWeight="medium" color="gray.700" mb={2}>Notes</Text>
                 <Textarea
+                  placeholder="Add notes about this problem"
                   value={editingNotes}
                   onChange={(e) => setEditingNotes(e.target.value)}
-                  placeholder="Add notes about the problem..."
-                  rows={4}
+                  minH="150px"
+                  bg="white"
                 />
               </Box>
-
-              {/* Save Button */}
-              <Button colorScheme="blue" onClick={handleUpdateProblem}>
-                Save Changes
-              </Button>
             </VStack>
           </ModalBody>
+
+          <ModalFooter borderTop="1px" borderColor="gray.100" gap={3}>
+            <Button variant="ghost" onClick={onEditClose}>Cancel</Button>
+            <Button
+              colorScheme="gray"
+              onClick={handleUpdateProblem}
+            >
+              Save Changes
+            </Button>
+          </ModalFooter>
         </ModalContent>
       </Modal>
     </Container>

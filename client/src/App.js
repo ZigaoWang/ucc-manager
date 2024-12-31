@@ -1,39 +1,70 @@
 import React from 'react';
-import { ChakraProvider, Box, Container, Heading, Text, VStack, Link } from '@chakra-ui/react';
+import { ChakraProvider, Box, Container, Heading, Text, Link, HStack, Center, Spacer } from '@chakra-ui/react';
 import ProblemList from './components/ProblemList';
 
 function App() {
   return (
     <ChakraProvider>
-      <Box minH="100vh" display="flex" flexDirection="column">
+      <Box minH="100vh" display="flex" flexDirection="column" bg="gray.50">
         {/* Header */}
-        <Box bg="blue.500" color="white" py={4} mb={8}>
+        <Box 
+          borderBottom="1px" 
+          borderColor="gray.100" 
+          bg="white" 
+          py={4} 
+          position="sticky" 
+          top={0} 
+          zIndex={1000}
+          backdropFilter="blur(10px)"
+          backgroundColor="rgba(255, 255, 255, 0.9)"
+        >
           <Container maxW="container.xl">
-            <Heading size="lg">UCC Manager</Heading>
+            <HStack spacing={4} align="baseline">
+              <Heading size="lg" color="gray.900">UCC Manager</Heading>
+              <Text fontSize="md" fontWeight="medium" color="gray.600" ml={1}>
+                <Text as="span" fontWeight="900" fontSize="1.2em" color="gray.900">U</Text>SACO · 
+                <Text as="span" fontWeight="900" fontSize="1.2em" color="gray.900">C</Text>SES · 
+                <Text as="span" fontWeight="900" fontSize="1.2em" color="gray.900">C</Text>odeForces
+              </Text>
+            </HStack>
           </Container>
         </Box>
 
         {/* Main Content */}
-        <Box flex="1">
-          <ProblemList />
+        <Box flex="1" py={8}>
+          <Container maxW="container.xl">
+            <ProblemList />
+          </Container>
         </Box>
 
         {/* Footer */}
-        <Box bg="gray.100" py={4} mt={8}>
+        <Box py={4} borderTop="1px" borderColor="gray.100" bg="white">
           <Container maxW="container.xl">
-            <VStack spacing={2} align="center">
-              <Text>Made by Zigao Wang</Text>
-              <Text fontSize="sm" color="gray.600">
-                Licensed under the{' '}
+            <Center>
+              <HStack spacing={2}>
+                <Text color="gray.600">Made by Zigao Wang</Text>
+                <Text color="gray.400">·</Text>
                 <Link
                   href="https://www.gnu.org/licenses/gpl-3.0.en.html"
-                  color="blue.500"
+                  color="gray.600"
+                  _hover={{ color: "gray.900" }}
                   isExternal
                 >
-                  GNU General Public License v3.0
+                  GNU License
                 </Link>
-              </Text>
-            </VStack>
+                <Text color="gray.400">·</Text>
+                <Link
+                  href="https://github.com/ZigaoWang/ucc-manager"
+                  color="gray.600"
+                  _hover={{ color: "gray.900" }}
+                  isExternal
+                >
+                  View on GitHub
+                </Link>
+                <Text color="gray.400">·</Text>
+                <Text color="gray.400"> 2025</Text>
+              </HStack>
+            </Center>
           </Container>
         </Box>
       </Box>
