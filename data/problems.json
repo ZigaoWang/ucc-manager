@@ -15,22 +15,28 @@
     "problemId": "668",
     "name": "Problem 668",
     "code": "",
-    "tags": [],
-    "notes": "",
+    "tags": [
+      "other"
+    ],
+    "notes": "ff",
     "result": "Accepted",
     "createdAt": "2024-12-31T12:47:57.438Z",
-    "sourceFile": "/Users/zigaowang/Documents/GitHub/ucc-manager/usaco/668/main.cpp"
+    "sourceFile": "/Users/zigaowang/Documents/GitHub/ucc-manager/usaco/668/main.cpp",
+    "updatedAt": "2024-12-31T15:15:13.035Z"
   },
   {
     "platform": "usaco",
     "problemId": "788",
     "name": "Problem 788",
     "code": "",
-    "tags": [],
-    "notes": "",
+    "tags": [
+      "dfs"
+    ],
+    "notes": "test",
     "result": "Accepted",
     "createdAt": "2024-12-31T12:47:57.988Z",
-    "sourceFile": "/Users/zigaowang/Documents/GitHub/ucc-manager/usaco/788/main.cpp"
+    "sourceFile": "/Users/zigaowang/Documents/GitHub/ucc-manager/usaco/788/main.cpp",
+    "updatedAt": "2024-12-31T15:14:49.820Z"
   },
   {
     "platform": "usaco",
@@ -59,11 +65,14 @@
     "problemId": "1069",
     "name": "repetitions",
     "code": "",
-    "tags": [],
-    "notes": "",
+    "tags": [
+      "dfs"
+    ],
+    "notes": "fwf",
     "result": "Accepted",
     "createdAt": "2024-12-31T12:47:59.627Z",
-    "sourceFile": "/Users/zigaowang/Documents/GitHub/ucc-manager/cses/1069-repetitions/main.cpp"
+    "sourceFile": "/Users/zigaowang/Documents/GitHub/ucc-manager/cses/1069-repetitions/main.cpp",
+    "updatedAt": "2024-12-31T15:15:01.358Z"
   },
   {
     "platform": "cses",

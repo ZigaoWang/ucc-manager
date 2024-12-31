@@ -21,6 +21,7 @@ import {
   Text,
   Heading,
   Tag,
+  TagCloseButton,
   Link,
   IconButton,
   useToast,
@@ -35,7 +36,7 @@ import {
   Spacer
 } from '@chakra-ui/react';
 
-const API_BASE_URL = 'http://localhost:4001';
+const API_BASE_URL = 'http://localhost:4001/api';
 
 const getPlatformColor = (platform) => {
   switch ((platform || '').toLowerCase()) {
@@ -80,6 +81,9 @@ const ProblemList = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterPlatform, setFilterPlatform] = useState('all');
   const [filterResult, setFilterResult] = useState('all');
+  const [editingTags, setEditingTags] = useState([]);
+  const [editingNotes, setEditingNotes] = useState('');
+  const [newTag, setNewTag] = useState('');
   const [cardDensity, setCardDensity] = useState(() => {
     const saved = localStorage.getItem('ucc-card-density');
     return saved || 'normal';
@@ -103,9 +107,6 @@ const ProblemList = () => {
   };
   const { isOpen: isEditOpen, onOpen: onEditOpen, onClose: onEditClose } = useDisclosure();
   const { isOpen: isCodeOpen, onOpen: onCodeOpen, onClose: onCodeClose } = useDisclosure();
-  const [editingTags, setEditingTags] = useState([]);
-  const [newTag, setNewTag] = useState('');
-  const [editingNotes, setEditingNotes] = useState('');
   const [codeContent, setCodeContent] = useState('');
   const toast = useToast();
 
@@ -119,13 +120,16 @@ const ProblemList = () => {
 
   const fetchProblems = async () => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/api/problems`);
+      const response = await axios.get(`${API_BASE_URL}/problems`, {
+        withCredentials: true
+      });
+      console.log('Fetched problems:', response.data);
       setProblems(response.data);
     } catch (error) {
       console.error('Error fetching problems:', error);
       toast({
         title: 'Error',
-        description: 'Failed to fetch problems',
+        description: 'Failed to fetch problems: ' + (error.response?.data?.error || error.message),
         status: 'error',
         duration: 3000,
         isClosable: true,
@@ -198,7 +202,8 @@ const ProblemList = () => {
   };
 
   const handleViewProblem = async (problem) => {
-    setSelectedProblem(problem);
+    console.log('Selected problem:', problem);  // Debug log
+    setSelectedProblem(problem);  // Store the whole problem object
     setEditingTags(problem.tags || []);
     setEditingNotes(problem.notes || '');
     
@@ -215,52 +220,72 @@ const ProblemList = () => {
     onEditOpen();
   };
 
+  const handleSaveChanges = async () => {
+    if (!selectedProblem?.problemId) {
+      toast({
+        title: 'Error saving',
+        description: 'Problem ID not found',
+        status: 'error',
+        duration: 2000,
+      });
+      return;
+    }
+
+    try {
+      console.log('Saving problem:', {
+        problemId: selectedProblem.problemId,
+        tags: editingTags,
+        notes: editingNotes
+      });
+
+      // Send only the updated fields
+      const response = await axios.put(
+        `${API_BASE_URL}/problems/${selectedProblem.problemId}`,
+        {
+          tags: editingTags,
+          notes: editingNotes
+        },
+        {
+          withCredentials: true
+        }
+      );
+
+      // Update local state with the response data
+      setProblems(prevProblems => 
+        prevProblems.map(p => 
+          p.problemId === selectedProblem.problemId ? response.data : p
+        )
+      );
+      
+      toast({
+        title: 'Saved!',
+        description: 'Changes saved successfully',
+        status: 'success',
+        duration: 2000,
+      });
+      
+      onEditClose();
+    } catch (error) {
+      console.error('Save error:', error);
+      toast({
+        title: 'Error saving',
+        description: error.response?.data?.error || error.message,
+        status: 'error',
+        duration: 2000,
+      });
+    }
+  };
+
   const handleAddTag = () => {
-    if (newTag && !editingTags.includes(newTag)) {
-      setEditingTags([...editingTags, newTag]);
+    const tag = newTag.trim();
+    if (tag && !editingTags.includes(tag)) {
+      setEditingTags(prev => [...prev, tag]);
       setNewTag('');
     }
   };
 
   const handleRemoveTag = (tagToRemove) => {
-    setEditingTags(editingTags.filter(tag => tag !== tagToRemove));
-  };
-
-  const handleUpdateProblem = async () => {
-    if (!selectedProblem?._id) return;
-    
-    try {
-      await axios.put(`${API_BASE_URL}/api/problems/${selectedProblem._id}`, {
-        ...selectedProblem,
-        tags: editingTags,
-        notes: editingNotes
-      });
-      
-      fetchProblems();
-      onEditClose();
-      
-      toast({
-        title: 'Success',
-        description: 'Problem updated successfully',
-        status: 'success',
-        duration: 2000,
-        isClosable: true,
-      });
-    } catch (error) {
-      console.error('Error updating problem:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to update problem',
-        status: 'error',
-        duration: 3000,
-        isClosable: true,
-      });
-    }
-  };
-
-  const handleDensityChange = (newDensity) => {
-    setCardDensity(newDensity);
-    localStorage.setItem('ucc-card-density', newDensity);
+    setEditingTags(prev => prev.filter(tag => tag !== tagToRemove));
   };
 
   return (
@@ -299,7 +324,10 @@ const ProblemList = () => {
 
           <Select
             value={cardDensity}
-            onChange={(e) => handleDensityChange(e.target.value)}
+            onChange={(e) => {
+              setCardDensity(e.target.value);
+              localStorage.setItem('ucc-card-density', e.target.value);
+            }}
             maxW="200px"
           >
             <option value="compact">Compact View</option>
@@ -318,9 +346,9 @@ const ProblemList = () => {
         columns={{ base: 1, sm: 2, md: 3, lg: densitySettings[cardDensity].columns }} 
         spacing={densitySettings[cardDensity].spacing}
       >
-        {filteredProblems.map((problem) => (
+        {filteredProblems.map((problem, index) => (
           <Box
-            key={problem._id}
+            key={problem.problemId || index}
             bg="white"
             p={densitySettings[cardDensity].padding}
             borderRadius="xl"
@@ -348,7 +376,7 @@ const ProblemList = () => {
                   {problem.platform.toUpperCase()}
                 </Badge>
                 <Badge
-                  colorScheme={problem.result === 'Accepted' ? 'green' : 'orange'}
+                  colorScheme={getResultColor(problem.result)}
                   variant="outline"
                   px={densitySettings[cardDensity].spacing === 4 ? 2 : 3}
                   py={0.5}
@@ -402,52 +430,25 @@ const ProblemList = () => {
       </SimpleGrid>
 
       {/* Problem Modal */}
-      <Modal isOpen={isEditOpen} onClose={onEditClose} size="2xl">
-        <ModalOverlay backdropFilter="blur(10px)" />
-        <ModalContent bg="white">
-          <ModalHeader borderBottom="1px" borderColor="gray.100" pb={4}>
-            <VStack align="stretch" spacing={3}>
-              <HStack spacing={3}>
-                <Badge
-                  colorScheme={getPlatformColor(selectedProblem?.platform)}
-                  variant="subtle"
-                  px={3}
-                  py={1}
-                  borderRadius="md"
-                >
-                  {selectedProblem?.platform.toUpperCase()}
-                </Badge>
-                <Badge
-                  colorScheme={selectedProblem?.result === 'Accepted' ? 'green' : 'orange'}
-                  variant="outline"
-                  px={3}
-                  py={1}
-                  borderRadius="md"
-                >
-                  {selectedProblem?.result === 'Time Limit Exceeded' ? 'TLE' : selectedProblem?.result}
-                </Badge>
-              </HStack>
-              <Box>
-                <Text fontSize="sm" color="gray.500" fontFamily="mono">
-                  {selectedProblem?.problemId}
-                </Text>
-                <Heading size="lg" color="gray.900">
-                  {['cses', 'cf'].includes(selectedProblem?.platform?.toLowerCase())
-                    ? toTitleCase(selectedProblem?.name)
-                    : selectedProblem?.name}
-                </Heading>
-              </Box>
-            </VStack>
+      <Modal isOpen={isEditOpen} onClose={onEditClose} size="lg">
+        <ModalOverlay />
+        <ModalContent>
+          <ModalHeader>
+            {selectedProblem?.name}
+            <Text fontSize="sm" color="gray.500" mt={1}>
+              {selectedProblem?.platform} - {selectedProblem?.problemId}
+            </Text>
           </ModalHeader>
           <ModalCloseButton />
-          <ModalBody py={6}>
-            <VStack align="stretch" spacing={6}>
+          
+          <ModalBody pb={6}>
+            <VStack spacing={4} align="stretch">
               {/* Source Code */}
               <Box>
-                <Text fontWeight="medium" color="gray.700" mb={2}>Source Code</Text>
+                <Text mb={2} fontWeight="semibold">Source Code</Text>
                 <Box
-                  bg="gray.50"
                   p={4}
+                  bg="gray.50"
                   borderRadius="md"
                   fontFamily="mono"
                   fontSize="sm"
@@ -455,46 +456,60 @@ const ProblemList = () => {
                   overflowX="auto"
                   maxH="300px"
                   overflowY="auto"
-                  border="1px"
-                  borderColor="gray.100"
                 >
-                  {codeContent || 'Loading...'}
+                  {codeContent || 'Loading source code...'}
                 </Box>
               </Box>
 
               {/* Tags */}
               <Box>
-                <Text fontWeight="medium" color="gray.700" mb={2}>Tags</Text>
-                <Input
-                  placeholder="Add tags (comma separated)"
-                  value={editingTags.join(', ')}
-                  onChange={(e) => setEditingTags(e.target.value.split(',').map(tag => tag.trim()).filter(tag => tag))}
-                  bg="white"
-                />
+                <Text mb={2} fontWeight="semibold">Tags</Text>
+                <Flex wrap="wrap" gap={2} mb={2}>
+                  {editingTags.map((tag, index) => (
+                    <Tag 
+                      key={index}
+                      colorScheme="blue"
+                      size="md"
+                    >
+                      {tag}
+                      <TagCloseButton onClick={() => handleRemoveTag(tag)} />
+                    </Tag>
+                  ))}
+                </Flex>
+                <HStack>
+                  <Input
+                    placeholder="Add a tag"
+                    value={newTag}
+                    onChange={(e) => setNewTag(e.target.value)}
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleAddTag();
+                      }
+                    }}
+                  />
+                  <Button onClick={handleAddTag}>Add</Button>
+                </HStack>
               </Box>
 
               {/* Notes */}
               <Box>
-                <Text fontWeight="medium" color="gray.700" mb={2}>Notes</Text>
+                <Text mb={2} fontWeight="semibold">Notes</Text>
                 <Textarea
-                  placeholder="Add notes about this problem"
                   value={editingNotes}
                   onChange={(e) => setEditingNotes(e.target.value)}
-                  minH="150px"
-                  bg="white"
+                  placeholder="Add notes here..."
+                  rows={6}
                 />
               </Box>
             </VStack>
           </ModalBody>
 
-          <ModalFooter borderTop="1px" borderColor="gray.100" gap={3}>
-            <Button variant="ghost" onClick={onEditClose}>Cancel</Button>
-            <Button
-              colorScheme="gray"
-              onClick={handleUpdateProblem}
-            >
-              Save Changes
+          <ModalFooter>
+            <Button colorScheme="blue" mr={3} onClick={handleSaveChanges}>
+              Save
             </Button>
+            <Button onClick={onEditClose}>Cancel</Button>
           </ModalFooter>
         </ModalContent>
       </Modal>
