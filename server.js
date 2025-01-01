@@ -10,10 +10,14 @@ require('dotenv').config();
 const app = express();
 const port = process.env.PORT || 4001;
 
-// Configure CORS for both development and production
-app.use(cors());  // Allow all origins for now to fix deployment issues
-
+// Configure CORS
+app.use(cors());
 app.use(express.json());
+
+// Serve static files from the React app in production
+if (process.env.NODE_ENV === 'production') {
+  app.use(express.static(path.join(__dirname, 'client/build')));
+}
 
 const PROBLEMS_FILE = path.join(__dirname, 'data', 'problems.json');
 
@@ -50,29 +54,19 @@ async function readProblems() {
       lastModified 
     };
   } catch (error) {
-    console.error('Error reading problems file:', error);
-    // Return empty array and current time if file doesn't exist or has error
-    return { 
-      problems: [], 
-      lastModified: new Date().toISOString() 
-    };
+    console.error('Error reading problems:', error);
+    return { problems: [], lastModified: new Date().toISOString() };
   }
 }
 
-// Get all problems
+// API Routes
 app.get('/api/problems', async (req, res) => {
   try {
     console.log('GET /api/problems request from:', req.get('origin'));
     const { problems, lastModified } = await readProblems();
-    
-    // Always return an array of problems and a lastModified time
-    res.json({ 
-      problems: Array.isArray(problems) ? problems : [],
-      lastModified: lastModified || new Date().toISOString()
-    });
+    res.json({ problems, lastModified });
   } catch (error) {
     console.error('Error reading problems:', error);
-    // Return empty array and current time on error
     res.status(500).json({ 
       error: 'Internal server error',
       problems: [],
@@ -108,6 +102,15 @@ app.put('/api/problems/:problemId', async (req, res) => {
   } catch (error) {
     console.error('Error updating problem:', error);
     res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Handle React routing, return all requests to React app
+app.get('*', (req, res) => {
+  if (process.env.NODE_ENV === 'production') {
+    res.sendFile(path.join(__dirname, 'client/build', 'index.html'));
+  } else {
+    res.status(404).send('Not found');
   }
 });
 

@@ -5,9 +5,9 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "nodemon server.js",
     "client": "cd client && npm start",
-    "dev-full": "concurrently \"npm run dev\" \"npm run client\""
+    "dev": "concurrently \"npm start\" \"npm run client\"",
+    "build": "cd client && npm install && npm run build"
   },
   "dependencies": {
     "axios": "^1.7.9",
