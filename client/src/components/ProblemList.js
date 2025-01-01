@@ -42,8 +42,8 @@ import StatusIndicator from './StatusIndicator';
 
 // API configuration
 const API_BASE_URL = process.env.NODE_ENV === 'production' 
-  ? 'https://ucc-manager-a7xbefdm5-zigao-wangs-projects.vercel.app/api'
-  : 'http://localhost:4001/api';
+  ? '' // Empty string since we're serving from the same domain
+  : 'http://localhost:4001';
 
 const getPlatformColor = (platform) => {
   switch ((platform || '').toLowerCase()) {

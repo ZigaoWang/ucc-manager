@@ -6,23 +6,29 @@
       "use": "@vercel/node"
     },
     {
-      "src": "client/build/**",
-      "use": "@vercel/static"
+      "src": "client/package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "build"
+      }
     }
   ],
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "server.js"
+      "dest": "/server.js"
+    },
+    {
+      "src": "^/static/(.*)",
+      "dest": "/client/build/static/$1"
+    },
+    {
+      "src": "/(.*)\\.(?:ico|png|jpg|jpeg|gif|svg)",
+      "dest": "/client/build/$1"
     },
     {
       "src": "/(.*)",
-      "dest": "client/build/$1",
-      "continue": true
+      "dest": "/client/build/index.html"
     }
-  ],
-  "env": {
-    "NODE_ENV": "production"
-  },
-  "buildCommand": "cd client && npm install && npm run build"
+  ]
 }
