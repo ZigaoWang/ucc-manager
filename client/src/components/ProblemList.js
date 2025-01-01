@@ -39,7 +39,7 @@ import {
 } from '@chakra-ui/react';
 import { ChevronDownIcon, SearchIcon } from '@chakra-ui/icons';
 
-const API_BASE_URL = '/api';
+const API_BASE_URL = 'http://localhost:4001/api';
 
 const getPlatformColor = (platform) => {
   switch ((platform || '').toLowerCase()) {
