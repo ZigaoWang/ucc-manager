@@ -50,7 +50,7 @@ async function scanGitHubDirectory(platform) {
         const isTLE = item.name.toLowerCase().startsWith('tle-');
         
         if (platform === 'cf') {
-          // CodeForces format: tle-1234-b-name
+          // CodeForces format: 1234-b-name
           const match = item.name.match(/^(?:tle-)?(\d+)-([a-zA-Z])-(.+)/);
           if (match) {
             problemId = `${match[1]}${match[2].toUpperCase()}`;
@@ -64,7 +64,7 @@ async function scanGitHubDirectory(platform) {
             name = match[2].replace(/-/g, ' ');
           }
         } else if (platform === 'usaco') {
-          // USACO format: tle-855
+          // USACO format: 855
           const match = item.name.match(/^(?:tle-)?(.+)/);
           if (match) {
             problemId = match[1];
@@ -86,30 +86,23 @@ async function scanGitHubDirectory(platform) {
             p.platform === platform && p.problemId === problemId
           );
           
-          // For new problems
           if (!existingProblem) {
             problems.push({
               platform,
               problemId,
-              name: isTLE ? `tle-${name}` : name,
+              name,
               code,
               sourceFile,
               rawSourceFile,
-              folderName: isTLE ? item.name : `tle-${problemId}-${name.replace(/ /g, '-').toLowerCase()}`,
-              tags: [],
-              notes: '',
               result: isTLE ? 'Time Limit Exceeded' : 'Accepted',
-              createdAt: new Date().toISOString()
+              lastUpdated: new Date().toISOString()
             });
             
             console.log(`Added ${platform.toUpperCase()} problem ${problemId}${isTLE ? ' (TLE)' : ''}`);
           } else {
             // Update existing problem
             existingProblem.code = code;
-            existingProblem.sourceFile = sourceFile;
-            existingProblem.rawSourceFile = rawSourceFile;
-            existingProblem.name = isTLE ? `tle-${name}` : name;
-            existingProblem.folderName = isTLE ? item.name : `tle-${problemId}-${name.replace(/ /g, '-').toLowerCase()}`;
+            existingProblem.lastUpdated = new Date().toISOString();
             existingProblem.result = isTLE ? 'Time Limit Exceeded' : 'Accepted';
             console.log(`Updated ${platform.toUpperCase()} problem ${problemId}${isTLE ? ' (TLE)' : ''}`);
           }
@@ -170,8 +163,7 @@ async function scanAll() {
       );
       return {
         ...newProblem,
-        tags: existing?.tags || [],
-        notes: existing?.notes || ''
+        lastUpdated: existing?.lastUpdated || newProblem.lastUpdated
       };
     });
     
