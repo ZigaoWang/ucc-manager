@@ -40,7 +40,10 @@ import {
 import { ChevronDownIcon, SearchIcon } from '@chakra-ui/icons';
 import StatusIndicator from './StatusIndicator';
 
-const API_BASE_URL = 'http://localhost:4001/api';
+// API configuration
+const API_BASE_URL = process.env.NODE_ENV === 'production' 
+  ? 'https://ucc-manager-a7xbefdm5-zigao-wangs-projects.vercel.app/api'
+  : 'http://localhost:4001/api';
 
 const getPlatformColor = (platform) => {
   switch ((platform || '').toLowerCase()) {
@@ -133,32 +136,25 @@ function ProblemList() {
   const [editingNotes, setEditingNotes] = useState('');
   const [newTag, setNewTag] = useState('');
   const [allTags, setAllTags] = useState([]);
+  const [codeContent, setCodeContent] = useState('');
+  const { lastFetched, setLastFetched } = useContext(ProblemListContext);
+  
+  const toast = useToast();
+  const { isOpen: isEditOpen, onOpen: onEditOpen, onClose: onEditClose } = useDisclosure();
+  const { isOpen: isCodeOpen, onOpen: onCodeOpen, onClose: onCodeClose } = useDisclosure();
+  
   const [cardDensity, setCardDensity] = useState(() => {
     const saved = localStorage.getItem('ucc-card-density');
     return saved || 'normal';
   });
-  const densitySettings = {
-    compact: {
-      columns: 5,
-      padding: 4,
-      spacing: 4
-    },
-    normal: {
-      columns: 4,
-      padding: 6,
-      spacing: 5
-    },
-    spacious: {
-      columns: 3,
-      padding: 8,
-      spacing: 6
-    }
+
+  const handleCardClick = (problem) => {
+    console.log('Card clicked:', problem);
+    setSelectedProblem(problem);
+    setEditingTags(problem.tags || []);
+    setEditingNotes(problem.notes || '');
+    onEditOpen();
   };
-  const { isOpen: isEditOpen, onOpen: onEditOpen, onClose: onEditClose } = useDisclosure();
-  const { isOpen: isCodeOpen, onOpen: onCodeOpen, onClose: onCodeClose } = useDisclosure();
-  const [codeContent, setCodeContent] = useState('');
-  const toast = useToast();
-  const { lastFetched, setLastFetched } = useContext(ProblemListContext);
 
   const fetchProblems = async () => {
     try {
@@ -168,20 +164,157 @@ function ProblemList() {
       });
       console.log('Fetched problems:', response.data);
       
-      // Add error handling for response data
-      if (!response.data || !Array.isArray(response.data.problems)) {
-        console.error('Invalid response data:', response.data);
-        throw new Error('Invalid response data from server');
+      // Ensure we have valid data
+      if (!response.data || typeof response.data !== 'object') {
+        throw new Error('Invalid response format');
+      }
+
+      const { problems: fetchedProblems, lastModified } = response.data;
+      
+      // Ensure problems is an array
+      if (!Array.isArray(fetchedProblems)) {
+        console.error('Problems is not an array:', fetchedProblems);
+        throw new Error('Problems data is not an array');
       }
       
-      setProblems(response.data.problems);
-      setLastFetched(response.data.lastModified);
+      setProblems(fetchedProblems);
+      
+      // Update tags
+      const tags = new Set();
+      fetchedProblems.forEach(problem => {
+        if (Array.isArray(problem.tags)) {
+          problem.tags.forEach(tag => tags.add(tag));
+        }
+      });
+      setAllTags(Array.from(tags));
+      
+      if (lastModified) {
+        setLastFetched(lastModified);
+      }
     } catch (error) {
       console.error('Error fetching problems:', error);
-      setProblems([]); // Set empty array on error
+      setProblems([]);
+      setAllTags([]);
       toast({
         title: 'Error',
         description: 'Failed to fetch problems: ' + (error.response?.data?.error || error.message),
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
+    }
+  };
+
+  const filterProblems = () => {
+    if (!Array.isArray(problems)) {
+      console.error('Problems is not an array:', problems);
+      return;
+    }
+
+    let filtered = [...problems];
+
+    if (searchQuery) {
+      filtered = filtered.filter(problem =>
+        problem.name.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
+
+    if (filterPlatform !== 'all') {
+      filtered = filtered.filter(problem => problem.platform === filterPlatform);
+    }
+
+    if (filterResult !== 'all') {
+      filtered = filtered.filter(problem => problem.result === filterResult);
+    }
+
+    if (filterTag) {
+      filtered = filtered.filter(problem =>
+        problem.tags && problem.tags.includes(filterTag)
+      );
+    }
+
+    setFilteredProblems(filtered);
+  };
+
+  const handleViewProblem = async (problem) => {
+    try {
+      const rawUrl = getRawGitHubUrl(problem);
+      const response = await axios.get(rawUrl);
+      const content = response.data;
+      
+      if (!content) {
+        toast({
+          title: 'Error',
+          description: 'Failed to fetch source code',
+          status: 'error',
+          duration: 3000,
+          isClosable: true,
+        });
+        return;
+      }
+      
+      setCodeContent(content);
+      onCodeOpen();
+    } catch (error) {
+      console.error('Error fetching source code:', error);
+      setCodeContent('Failed to load source code. You can view the code on GitHub using the link below.');
+      toast({
+        title: 'Error',
+        description: 'Failed to fetch source code: ' + error.message,
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
+      onCodeOpen();
+    }
+  };
+
+  const handleSaveChanges = async () => {
+    if (!selectedProblem?.problemId) {
+      toast({
+        title: 'Error saving',
+        description: 'Problem ID not found',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
+      return;
+    }
+
+    try {
+      await axios.put(
+        `${API_BASE_URL}/problems/${selectedProblem.problemId}`,
+        {
+          ...selectedProblem,
+          tags: editingTags,
+          notes: editingNotes
+        },
+        { withCredentials: true }
+      );
+      
+      // Update local state
+      setProblems(prevProblems =>
+        prevProblems.map(p =>
+          p.problemId === selectedProblem.problemId
+            ? { ...p, tags: editingTags, notes: editingNotes }
+            : p
+        )
+      );
+      
+      toast({
+        title: 'Saved!',
+        description: 'Changes saved successfully',
+        status: 'success',
+        duration: 2000,
+        isClosable: true,
+      });
+      
+      onEditClose();
+    } catch (error) {
+      console.error('Save error:', error);
+      toast({
+        title: 'Error saving',
+        description: error.response?.data?.error || error.message,
         status: 'error',
         duration: 3000,
         isClosable: true,
@@ -204,45 +337,10 @@ function ProblemList() {
   }, []);
 
   useEffect(() => {
-    filterProblems();
+    if (Array.isArray(problems)) {
+      filterProblems();
+    }
   }, [problems, searchQuery, filterPlatform, filterResult, filterTag]);
-
-  useEffect(() => {
-    const tags = new Set();
-    problems.forEach(problem => {
-      problem.tags?.forEach(tag => tags.add(tag));
-    });
-    setAllTags(Array.from(tags).sort());
-  }, [problems]);
-
-  const filterProblems = () => {
-    let filtered = [...problems];
-
-    if (filterPlatform !== 'all') {
-      filtered = filtered.filter(p => p.platform.toLowerCase() === filterPlatform.toLowerCase());
-    }
-
-    if (filterResult !== 'all') {
-      filtered = filtered.filter(p => {
-        const status = p.name?.toLowerCase().startsWith('tle-') ? 'tle' : p.result?.toLowerCase();
-        return status === filterResult.toLowerCase();
-      });
-    }
-
-    if (filterTag) {
-      filtered = filtered.filter(p => p.tags?.includes(filterTag));
-    }
-
-    if (searchQuery) {
-      filtered = filtered.filter(p =>
-        p.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.platform?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.tags?.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))
-      );
-    }
-
-    setFilteredProblems(filtered);
-  };
 
   const getFolderName = (problem) => {
     if (!problem) return '';
@@ -277,78 +375,6 @@ function ProblemList() {
     const folderName = getFolderName(problem);
     const filePath = `${problem.platform}/${folderName}/main.cpp`;
     return `https://github.com/${repoOwner}/${repoName}/blob/main/${filePath}`;
-  };
-
-  const handleViewProblem = async (problem) => {
-    console.log('Selected problem:', problem);  
-    setSelectedProblem(problem);  
-    setEditingTags(problem.tags || []);
-    setEditingNotes(problem.notes || '');
-    
-    try {
-      const rawUrl = getRawGitHubUrl(problem);
-      const response = await axios.get(rawUrl);
-      setCodeContent(response.data);
-    } catch (error) {
-      console.error('Error fetching source code:', error);
-      setCodeContent('Failed to load source code. You can view the code on GitHub using the link below.');
-    }
-    
-    onEditOpen();
-  };
-
-  const handleSaveChanges = async () => {
-    if (!selectedProblem?.problemId) {
-      toast({
-        title: 'Error saving',
-        description: 'Problem ID not found',
-        status: 'error',
-        duration: 2000,
-      });
-      return;
-    }
-
-    try {
-      console.log('Saving problem:', {
-        problemId: selectedProblem.problemId,
-        tags: editingTags,
-        notes: editingNotes
-      });
-
-      const response = await axios.put(
-        `${API_BASE_URL}/problems/${selectedProblem.problemId}`,
-        {
-          tags: editingTags,
-          notes: editingNotes
-        },
-        {
-          withCredentials: true
-        }
-      );
-
-      setProblems(prevProblems => 
-        prevProblems.map(p => 
-          p.problemId === selectedProblem.problemId ? response.data : p
-        )
-      );
-      
-      toast({
-        title: 'Saved!',
-        description: 'Changes saved successfully',
-        status: 'success',
-        duration: 2000,
-      });
-      
-      onEditClose();
-    } catch (error) {
-      console.error('Save error:', error);
-      toast({
-        title: 'Error saving',
-        description: error.response?.data?.error || error.message,
-        status: 'error',
-        duration: 2000,
-      });
-    }
   };
 
   const handleAddTag = () => {
@@ -429,19 +455,18 @@ function ProblemList() {
       <Box
         key={problem.problemId}
         bg="white"
-        p={densitySettings[cardDensity].padding}
+        p={4}
         borderRadius="xl"
         boxShadow="sm"
         border="1px"
         borderColor="gray.100"
-        onClick={() => handleViewProblem(problem)}
+        onClick={() => handleCardClick(problem)}
         cursor="pointer"
+        transition="all 0.2s"
         _hover={{
           transform: 'translateY(-2px)',
           boxShadow: 'md',
-          borderColor: 'blue.100'
         }}
-        transition="all 0.2s"
       >
         <VStack align="stretch" spacing={3}>
           <HStack justify="space-between">
@@ -459,7 +484,7 @@ function ProblemList() {
             </Badge>
             <Badge
               colorScheme={getResultColor(problem.result)}
-              variant={formattedResult === 'TLE' ? 'solid' : 'outline'}
+              variant={formattedResult === 'TLE' ? "solid" : "outline"}
               px={3}
               py={1}
               borderRadius="md"
@@ -503,9 +528,23 @@ function ProblemList() {
     );
   };
 
-  // Attach components to ProblemList
-  ProblemList.Provider = ProblemListProvider;
-  ProblemList.StatusIndicator = ProblemListStatusIndicator;
+  const densitySettings = {
+    compact: {
+      columns: 5,
+      padding: 4,
+      spacing: 4
+    },
+    normal: {
+      columns: 4,
+      padding: 6,
+      spacing: 5
+    },
+    spacious: {
+      columns: 3,
+      padding: 8,
+      spacing: 6
+    }
+  };
 
   return (
     <Container maxW="container.xl" py={8}>
@@ -593,11 +632,7 @@ function ProblemList() {
                         transition="all 0.2s"
                       >
                         {tag}
-                        <Badge
-                          ml={2}
-                          colorScheme="blue"
-                          variant={filterTag === tag ? "solid" : "outline"}
-                        >
+                        <Badge ml={2} colorScheme="blue" variant={filterTag === tag ? "solid" : "outline"}>
                           {problems.filter(p => p.tags?.includes(tag)).length}
                         </Badge>
                       </Tag>
@@ -613,111 +648,94 @@ function ProblemList() {
           </VStack>
         </Box>
 
-        <SimpleGrid
-          columns={densitySettings[cardDensity].columns}
-          spacing={densitySettings[cardDensity].spacing}
-        >
+        <SimpleGrid columns={densitySettings[cardDensity].columns} spacing={densitySettings[cardDensity].spacing}>
           {filteredProblems.map(renderProblemCard)}
         </SimpleGrid>
 
-        {/* Problem Modal */}
+        {/* Edit Modal */}
         <Modal isOpen={isEditOpen} onClose={onEditClose} size="xl">
           <ModalOverlay />
           <ModalContent>
-            <ModalHeader>
-              <VStack align="stretch" spacing={1}>
-                <Text fontSize="sm" color="gray.500">
-                  {selectedProblem?.platform?.toUpperCase()} #{selectedProblem?.problemId}
-                </Text>
-                <Heading size="lg">
-                  {selectedProblem && formatProblemName(selectedProblem.name, selectedProblem.platform)}
-                </Heading>
-              </VStack>
-            </ModalHeader>
+            <ModalHeader>Edit Problem</ModalHeader>
             <ModalCloseButton />
-            
-            <ModalBody pb={6}>
-              <VStack spacing={6} align="stretch">
-                {/* Source Code */}
-                <Box>
-                  <Text fontWeight="medium" color="gray.700" mb={2}>Source Code</Text>
-                  <Box
-                    p={4}
-                    bg="gray.50"
-                    borderRadius="md"
-                    fontFamily="mono"
-                    fontSize="sm"
-                    whiteSpace="pre-wrap"
-                    overflowX="auto"
-                    maxH="300px"
-                    overflowY="auto"
-                    border="1px"
-                    borderColor="gray.200"
-                  >
-                    {codeContent || 'Loading source code...'}
-                  </Box>
-                </Box>
-
-                {/* Tags */}
-                <Box>
-                  <Text fontWeight="medium" color="gray.700" mb={2}>Tags</Text>
-                  <VStack align="stretch" spacing={3}>
-                    <Wrap spacing={2}>
+            <ModalBody>
+              {selectedProblem && (
+                <VStack spacing={4} align="stretch">
+                  <Text fontWeight="bold">{selectedProblem.name}</Text>
+                  <HStack>
+                    <Text>Tags:</Text>
+                    <Wrap>
                       {editingTags.map((tag, index) => (
-                        <Tag 
-                          key={index}
-                          colorScheme="blue"
-                          size="md"
-                        >
-                          {tag}
-                          <TagCloseButton onClick={() => handleRemoveTag(tag)} />
-                        </Tag>
+                        <WrapItem key={index}>
+                          <Tag
+                            size="md"
+                            borderRadius="full"
+                            variant="solid"
+                            colorScheme="blue"
+                          >
+                            <TagCloseButton
+                              onClick={() => {
+                                setEditingTags(prev =>
+                                  prev.filter((_, i) => i !== index)
+                                );
+                              }}
+                            />
+                            {tag}
+                          </Tag>
+                        </WrapItem>
                       ))}
                     </Wrap>
-                    <HStack>
-                      <Input
-                        placeholder="Add a tag"
-                        value={newTag}
-                        onChange={(e) => setNewTag(e.target.value)}
-                        onKeyPress={(e) => {
-                          if (e.key === 'Enter') {
-                            e.preventDefault();
-                            handleAddTag();
-                          }
-                        }}
-                      />
-                      <Button colorScheme="blue" onClick={handleAddTag}>
-                        Add
-                      </Button>
-                    </HStack>
-                  </VStack>
-                </Box>
-
-                {/* Notes */}
-                <Box>
-                  <Text fontWeight="medium" color="gray.700" mb={2}>Notes</Text>
-                  <Textarea
-                    value={editingNotes}
-                    onChange={(e) => setEditingNotes(e.target.value)}
-                    placeholder="Add notes here..."
-                    rows={6}
-                    bg="gray.50"
-                    _focus={{
-                      bg: "white",
-                      borderColor: "blue.400"
+                  </HStack>
+                  <Input
+                    placeholder="Add new tag"
+                    value={newTag}
+                    onChange={(e) => setNewTag(e.target.value)}
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter') {
+                        handleAddTag();
+                      }
                     }}
                   />
-                </Box>
-              </VStack>
+                  <Textarea
+                    placeholder="Notes"
+                    value={editingNotes}
+                    onChange={(e) => setEditingNotes(e.target.value)}
+                    rows={4}
+                  />
+                </VStack>
+              )}
             </ModalBody>
-
-            <ModalFooter bg="gray.50" borderBottomRadius="xl">
+            <ModalFooter>
               <Button colorScheme="blue" mr={3} onClick={handleSaveChanges}>
-                Save Changes
+                Save
               </Button>
-              <Button variant="ghost" onClick={onEditClose}>
-                Cancel
-              </Button>
+              <Button onClick={onEditClose}>Cancel</Button>
+            </ModalFooter>
+          </ModalContent>
+        </Modal>
+
+        {/* Code Modal */}
+        <Modal isOpen={isCodeOpen} onClose={onCodeClose} size="full">
+          <ModalOverlay />
+          <ModalContent>
+            <ModalHeader>Source Code</ModalHeader>
+            <ModalCloseButton />
+            <ModalBody>
+              <pre style={{ whiteSpace: 'pre-wrap' }}>{codeContent}</pre>
+              {selectedProblem && (
+                <Link
+                  href={getGitHubUrl(selectedProblem)}
+                  isExternal
+                  color="blue.500"
+                  mt={4}
+                  display="block"
+                >
+                  View on GitHub
+                </Link>
+              )}
+            </ModalBody>
+            <ModalFooter>
+              <Button onClick={onCodeClose}>Close</Button>
             </ModalFooter>
           </ModalContent>
         </Modal>

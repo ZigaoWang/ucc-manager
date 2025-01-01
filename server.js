@@ -13,11 +13,13 @@ const port = process.env.PORT || 4001;
 // Configure CORS for both development and production
 const allowedOrigins = [
   'http://localhost:4000',
+  'http://localhost:3000',
   'https://ucc-manager.vercel.app',
   'https://ucc-manager-git-main-zigao-wangs-projects.vercel.app',
-  'https://ucc-manager-6zi8gaxm5-zigao-wangs-projects.vercel.app'
+  'https://ucc-manager-a7xbefdm5-zigao-wangs-projects.vercel.app'
 ];
 
+// Add Vercel URL to allowed origins if present
 if (process.env.VERCEL_URL) {
   allowedOrigins.push(`https://${process.env.VERCEL_URL}`);
 }
@@ -36,7 +38,9 @@ app.use(cors({
       callback(new Error('Not allowed by CORS'));
     }
   },
-  credentials: true
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
 app.use(express.json());
@@ -46,17 +50,42 @@ const PROBLEMS_FILE = path.join(__dirname, 'data', 'problems.json');
 // Helper function to read problems
 async function readProblems() {
   try {
+    // Check if file exists
+    await fs.access(PROBLEMS_FILE);
+    
     const data = await fs.readFile(PROBLEMS_FILE, 'utf-8');
     const stats = await fs.stat(PROBLEMS_FILE);
     const lastModified = stats.mtime.toISOString();
-    const problems = JSON.parse(data);
-    return { problems: Array.isArray(problems) ? problems : [], lastModified };
-  } catch (error) {
-    console.error('Error reading problems file:', error);
-    if (error.code === 'ENOENT') {
+    
+    let problems;
+    try {
+      problems = JSON.parse(data);
+    } catch (parseError) {
+      console.error('Error parsing problems JSON:', parseError);
       return { problems: [], lastModified: new Date().toISOString() };
     }
-    throw error;
+    
+    // Ensure problems is an array
+    const problemsArray = Array.isArray(problems) ? problems : [];
+    
+    // Validate each problem object
+    const validProblems = problemsArray.filter(problem => {
+      return problem && typeof problem === 'object' && 
+             typeof problem.problemId === 'string' &&
+             typeof problem.name === 'string';
+    });
+    
+    return { 
+      problems: validProblems,
+      lastModified 
+    };
+  } catch (error) {
+    console.error('Error reading problems file:', error);
+    // Return empty array and current time if file doesn't exist or has error
+    return { 
+      problems: [], 
+      lastModified: new Date().toISOString() 
+    };
   }
 }
 
@@ -90,9 +119,15 @@ app.get('/api/problems', async (req, res) => {
   try {
     console.log('GET /api/problems request from:', req.get('origin'));
     const { problems, lastModified } = await readProblems();
-    res.json({ problems: Array.isArray(problems) ? problems : [], lastModified });
+    
+    // Always return an array of problems and a lastModified time
+    res.json({ 
+      problems: Array.isArray(problems) ? problems : [],
+      lastModified: lastModified || new Date().toISOString()
+    });
   } catch (error) {
     console.error('Error reading problems:', error);
+    // Return empty array and current time on error
     res.status(500).json({ 
       error: 'Internal server error',
       problems: [],
@@ -152,6 +187,16 @@ app.put('/api/problems/:id', async (req, res) => {
   }
 });
 
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error('Error:', err);
+  res.status(500).json({
+    error: 'Internal server error',
+    problems: [],
+    lastModified: new Date().toISOString()
+  });
+});
+
 app.listen(port, () => {
-  console.log(`Server is running on port: ${port}`);
+  console.log(`Server is running on port ${port}`);
 });

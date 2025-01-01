@@ -13,12 +13,16 @@
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "/server.js"
+      "dest": "server.js"
     },
     {
       "src": "/(.*)",
-      "dest": "/client/build/$1"
+      "dest": "client/build/$1",
+      "continue": true
     }
   ],
+  "env": {
+    "NODE_ENV": "production"
+  },
   "buildCommand": "cd client && npm install && npm run build"
 }
