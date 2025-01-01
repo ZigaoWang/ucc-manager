@@ -7,6 +7,9 @@ const util = require('util');
 const execAsync = util.promisify(exec);
 require('dotenv').config();
 
+// Import the problem scanner
+const { startPeriodicScan, getProblemsData } = require('./scripts/scanProblems');
+
 const app = express();
 const port = process.env.PORT || 4001;
 
@@ -63,19 +66,18 @@ async function readProblems() {
 app.get('/api/problems', async (req, res) => {
   try {
     console.log('GET /api/problems request from:', req.get('origin'));
-    const { problems, lastModified } = await readProblems();
+    const { problems, lastModified } = await getProblemsData();
     
-    // Always send current time as lastModified
     res.json({ 
       problems, 
-      lastModified: new Date().toISOString() 
+      lastModified 
     });
   } catch (error) {
     console.error('Error reading problems:', error);
     res.status(500).json({ 
       error: 'Internal server error',
       problems: [],
-      lastModified: new Date().toISOString()
+      lastModified: null
     });
   }
 });
@@ -129,6 +131,20 @@ app.use((err, req, res, next) => {
   });
 });
 
-app.listen(port, () => {
-  console.log(`Server is running on port ${port}`);
-});
+// Start the server only after initial scan is complete
+async function startServer() {
+  try {
+    console.log('Running initial problem scan...');
+    await startPeriodicScan();
+    
+    // Start the server
+    app.listen(port, () => {
+      console.log(`Server is running on port ${port}`);
+    });
+  } catch (error) {
+    console.error('Error starting server:', error);
+    process.exit(1);
+  }
+}
+
+startServer();

@@ -4,6 +4,7 @@ const axios = require('axios');
 
 // Store problems in a local array
 let problems = [];
+let lastScanTime = null;
 
 // GitHub API configuration
 const REPO_OWNER = 'ZigaoWang';
@@ -11,6 +12,9 @@ const REPO_NAME = 'usaco-cses-cf';
 const GITHUB_API = 'https://api.github.com';
 const GITHUB_RAW = 'https://raw.githubusercontent.com';
 const GITHUB_REPO = `https://github.com/${REPO_OWNER}/${REPO_NAME}`;
+
+// Scanning interval in milliseconds (5 minutes)
+const SCAN_INTERVAL = 5 * 60 * 1000;
 
 async function fetchGitHubContent(path) {
   try {
@@ -44,26 +48,28 @@ async function scanGitHubDirectory(platform) {
       if (item.type === 'dir') {
         let problemId, name;
         const isTLE = item.name.toLowerCase().startsWith('tle-');
-        const cleanName = item.name.replace(/^tle-/i, '');
         
         if (platform === 'cf') {
-          // CodeForces format: 1234-b-name
-          const match = cleanName.match(/(\d+)-([a-zA-Z])-(.+)/);
+          // CodeForces format: tle-1234-b-name
+          const match = item.name.match(/^(?:tle-)?(\d+)-([a-zA-Z])-(.+)/);
           if (match) {
             problemId = `${match[1]}${match[2].toUpperCase()}`;
             name = match[3].replace(/-/g, ' ');
           }
         } else if (platform === 'cses') {
-          // CSES format: 1234-name
-          const match = cleanName.match(/(\d+)-(.+)/);
+          // CSES format: tle-1234-name
+          const match = item.name.match(/^(?:tle-)?(\d+)-(.+)/);
           if (match) {
             problemId = match[1];
             name = match[2].replace(/-/g, ' ');
           }
         } else if (platform === 'usaco') {
-          // USACO format: 855
-          problemId = cleanName;
-          name = `Problem ${cleanName}`;
+          // USACO format: tle-855
+          const match = item.name.match(/^(?:tle-)?(.+)/);
+          if (match) {
+            problemId = match[1];
+            name = `Problem ${match[1]}`;
+          }
         }
         
         if (problemId) {
@@ -80,6 +86,7 @@ async function scanGitHubDirectory(platform) {
             p.platform === platform && p.problemId === problemId
           );
           
+          // For new problems
           if (!existingProblem) {
             problems.push({
               platform,
@@ -88,7 +95,7 @@ async function scanGitHubDirectory(platform) {
               code,
               sourceFile,
               rawSourceFile,
-              folderName: item.name,
+              folderName: isTLE ? item.name : `tle-${problemId}-${name.replace(/ /g, '-').toLowerCase()}`,
               tags: [],
               notes: '',
               result: isTLE ? 'Time Limit Exceeded' : 'Accepted',
@@ -101,7 +108,8 @@ async function scanGitHubDirectory(platform) {
             existingProblem.code = code;
             existingProblem.sourceFile = sourceFile;
             existingProblem.rawSourceFile = rawSourceFile;
-            existingProblem.folderName = item.name;
+            existingProblem.name = isTLE ? `tle-${name}` : name;
+            existingProblem.folderName = isTLE ? item.name : `tle-${problemId}-${name.replace(/ /g, '-').toLowerCase()}`;
             existingProblem.result = isTLE ? 'Time Limit Exceeded' : 'Accepted';
             console.log(`Updated ${platform.toUpperCase()} problem ${problemId}${isTLE ? ' (TLE)' : ''}`);
           }
@@ -119,48 +127,108 @@ async function init() {
     const dataDir = path.join(__dirname, '..', 'data');
     await fs.mkdir(dataDir, { recursive: true });
     
-    // Create empty problems.json if it doesn't exist
+    // Load existing problems if any
     const problemsFile = path.join(dataDir, 'problems.json');
     try {
       const data = await fs.readFile(problemsFile, 'utf-8');
-      problems = JSON.parse(data);
+      const parsedData = JSON.parse(data);
+      problems = Array.isArray(parsedData.problems) ? parsedData.problems : [];
+      lastScanTime = parsedData.lastModified || null;
     } catch (error) {
       if (error.code === 'ENOENT') {
-        await fs.writeFile(problemsFile, '[]');
+        await fs.writeFile(problemsFile, JSON.stringify({ problems: [], lastModified: null }));
         problems = [];
+        lastScanTime = null;
       } else {
-        throw error;
+        console.error('Error reading problems file:', error);
       }
     }
   } catch (error) {
     console.error('Error initializing:', error);
-    process.exit(1);
   }
 }
 
 async function scanAll() {
   try {
-    // Scan each platform directory
+    console.log('Starting problem scan...');
+    
+    // Keep existing metadata
+    const existingProblems = [...problems];
+    problems = [];
+    
+    // Scan all platforms
     await Promise.all([
       scanGitHubDirectory('usaco'),
       scanGitHubDirectory('cses'),
       scanGitHubDirectory('cf')
     ]);
     
-    // Save updated problems to file
+    // Restore metadata from existing problems
+    problems = problems.map(newProblem => {
+      const existing = existingProblems.find(p => 
+        p.platform === newProblem.platform && p.problemId === newProblem.problemId
+      );
+      return {
+        ...newProblem,
+        tags: existing?.tags || [],
+        notes: existing?.notes || ''
+      };
+    });
+    
+    // Update last scan time
+    lastScanTime = new Date().toISOString();
+    
+    // Save to file
     const problemsFile = path.join(__dirname, '..', 'data', 'problems.json');
-    await fs.writeFile(problemsFile, JSON.stringify(problems, null, 2));
-    console.log('All problems have been scanned and saved.');
+    await fs.writeFile(
+      problemsFile,
+      JSON.stringify({
+        problems,
+        lastModified: lastScanTime
+      }, null, 2)
+    );
+    
+    console.log(`Scan complete. Found ${problems.length} problems.`);
+    return { problems, lastModified: lastScanTime };
   } catch (error) {
     console.error('Error during scan:', error);
-    process.exit(1);
+    return { problems: [], lastModified: null };
   }
 }
 
-// Run the scanner
-init()
-  .then(scanAll)
-  .catch(error => {
-    console.error('Error:', error);
-    process.exit(1);
-  });
+async function getProblemsData() {
+  try {
+    const data = await fs.readFile(path.join(__dirname, '..', 'data', 'problems.json'), 'utf-8');
+    const parsedData = JSON.parse(data);
+    return {
+      problems: parsedData.problems || [],
+      lastModified: parsedData.lastModified || null
+    };
+  } catch (error) {
+    console.error('Error reading problems:', error);
+    return await scanAll();
+  }
+}
+
+async function startPeriodicScan() {
+  console.log('Starting periodic problem scanner...');
+  
+  // Initial scan
+  await init();
+  const initialData = await scanAll();
+  
+  // Set up periodic scanning
+  setInterval(() => {
+    console.log('Running periodic scan...');
+    scanAll().catch(error => {
+      console.error('Error in periodic scan:', error.message);
+    });
+  }, SCAN_INTERVAL);
+  
+  return initialData;
+}
+
+module.exports = {
+  startPeriodicScan,
+  getProblemsData
+};
