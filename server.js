@@ -64,7 +64,12 @@ app.get('/api/problems', async (req, res) => {
   try {
     console.log('GET /api/problems request from:', req.get('origin'));
     const { problems, lastModified } = await readProblems();
-    res.json({ problems, lastModified });
+    
+    // Always send current time as lastModified
+    res.json({ 
+      problems, 
+      lastModified: new Date().toISOString() 
+    });
   } catch (error) {
     console.error('Error reading problems:', error);
     res.status(500).json({ 

@@ -107,28 +107,24 @@ const formatProblemName = (name, platform) => {
 // Create context
 export const ProblemListContext = createContext({
   lastFetched: null,
-  setLastFetched: () => {},
+  setLastFetched: () => {}
 });
 
 // Create Provider component
-export function ProblemListProvider({ children }) {
+export const ProblemListProvider = ({ children }) => {
   const [lastFetched, setLastFetched] = useState(null);
   return (
     <ProblemListContext.Provider value={{ lastFetched, setLastFetched }}>
       {children}
     </ProblemListContext.Provider>
   );
-}
+};
 
 // Create StatusIndicator component
-export function ProblemListStatusIndicator() {
+export const ProblemListStatusIndicator = () => {
   const { lastFetched } = useContext(ProblemListContext);
-  return (
-    <Text fontSize="sm" color="gray.500">
-      Last updated: {lastFetched ? new Date(lastFetched).toLocaleString() : 'Never'}
-    </Text>
-  );
-}
+  return <StatusIndicator lastFetched={lastFetched} />;
+};
 
 function ProblemList() {
   const [problems, setProblems] = useState([]);
@@ -181,8 +177,11 @@ function ProblemList() {
       });
       setAllTags(Array.from(tags));
       
+      // Update lastFetched with the server's lastModified time
       if (lastModified) {
         setLastFetched(lastModified);
+      } else {
+        setLastFetched(new Date().toISOString());
       }
     } catch (error) {
       console.error('Error fetching problems:', error);
