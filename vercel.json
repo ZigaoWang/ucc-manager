@@ -9,7 +9,8 @@
       "src": "client/package.json",
       "use": "@vercel/static-build",
       "config": {
-        "distDir": "build"
+        "distDir": "build",
+        "buildCommand": "npm install && npm run build"
       }
     }
   ],
@@ -19,12 +20,7 @@
       "dest": "/server.js"
     },
     {
-      "src": "^/static/(.*)",
-      "dest": "/client/build/static/$1"
-    },
-    {
-      "src": "/(.*)\\.(?:ico|png|jpg|jpeg|gif|svg)",
-      "dest": "/client/build/$1"
+      "handle": "filesystem"
     },
     {
       "src": "/(.*)",
