@@ -23,8 +23,9 @@ import {
   Tag,
   TagCloseButton,
   Link,
-  IconButton,
   useToast,
+  Wrap,
+  WrapItem,
   Menu,
   MenuButton,
   MenuList,
@@ -32,10 +33,9 @@ import {
   Select,
   InputGroup,
   InputLeftElement,
+  IconButton,
   Flex,
   Spacer,
-  Wrap,
-  WrapItem
 } from '@chakra-ui/react';
 import { ChevronDownIcon, SearchIcon } from '@chakra-ui/icons';
 import StatusIndicator from './StatusIndicator';
@@ -105,12 +105,14 @@ const formatProblemName = (name, platform) => {
 };
 
 // Create context
-export const ProblemListContext = createContext(null);
+export const ProblemListContext = createContext({
+  lastFetched: null,
+  setLastFetched: () => {},
+});
 
 // Create Provider component
 export function ProblemListProvider({ children }) {
   const [lastFetched, setLastFetched] = useState(null);
-  
   return (
     <ProblemListContext.Provider value={{ lastFetched, setLastFetched }}>
       {children}
@@ -121,7 +123,11 @@ export function ProblemListProvider({ children }) {
 // Create StatusIndicator component
 export function ProblemListStatusIndicator() {
   const { lastFetched } = useContext(ProblemListContext);
-  return <StatusIndicator lastFetched={lastFetched} />;
+  return (
+    <Text fontSize="sm" color="gray.500">
+      Last updated: {lastFetched ? new Date(lastFetched).toLocaleString() : 'Never'}
+    </Text>
+  );
 }
 
 function ProblemList() {
@@ -148,35 +154,22 @@ function ProblemList() {
     return saved || 'normal';
   });
 
-  const handleCardClick = (problem) => {
-    console.log('Card clicked:', problem);
-    setSelectedProblem(problem);
-    setEditingTags(problem.tags || []);
-    setEditingNotes(problem.notes || '');
-    onEditOpen();
-  };
-
   const fetchProblems = async () => {
     try {
       console.log('Fetching problems...');
-      const response = await axios.get(`${API_BASE_URL}/problems`, {
-        withCredentials: true
-      });
-      console.log('Fetched problems:', response.data);
-      
-      // Ensure we have valid data
-      if (!response.data || typeof response.data !== 'object') {
+      const response = await axios.get(`${API_BASE_URL}/api/problems`);
+      console.log('Response:', response.data);
+
+      if (!response.data || !response.data.problems) {
         throw new Error('Invalid response format');
       }
 
       const { problems: fetchedProblems, lastModified } = response.data;
       
-      // Ensure problems is an array
       if (!Array.isArray(fetchedProblems)) {
-        console.error('Problems is not an array:', fetchedProblems);
         throw new Error('Problems data is not an array');
       }
-      
+
       setProblems(fetchedProblems);
       
       // Update tags
@@ -193,19 +186,23 @@ function ProblemList() {
       }
     } catch (error) {
       console.error('Error fetching problems:', error);
-      setProblems([]);
-      setAllTags([]);
       toast({
-        title: 'Error',
-        description: 'Failed to fetch problems: ' + (error.response?.data?.error || error.message),
+        title: 'Error fetching problems',
+        description: error.message,
         status: 'error',
-        duration: 3000,
+        duration: 5000,
         isClosable: true,
       });
     }
   };
 
-  const filterProblems = () => {
+  // Initial fetch
+  useEffect(() => {
+    fetchProblems();
+  }, []);
+
+  // Filter problems when dependencies change
+  useEffect(() => {
     if (!Array.isArray(problems)) {
       console.error('Problems is not an array:', problems);
       return;
@@ -234,6 +231,25 @@ function ProblemList() {
     }
 
     setFilteredProblems(filtered);
+  }, [problems, searchQuery, filterPlatform, filterResult, filterTag]);
+
+  const handleCardClick = async (problem) => {
+    console.log('Card clicked:', problem);
+    setSelectedProblem(problem);
+    setEditingTags(problem.tags || []);
+    setEditingNotes(problem.notes || '');
+    
+    try {
+      const rawUrl = getRawGitHubUrl(problem);
+      console.log('Fetching code from:', rawUrl);
+      const response = await axios.get(rawUrl);
+      setCodeContent(response.data || '// No code content available');
+    } catch (error) {
+      console.error('Error fetching source code:', error);
+      setCodeContent('// Failed to load source code. You can view the code on GitHub using the link below.');
+    }
+    
+    onEditOpen();
   };
 
   const handleViewProblem = async (problem) => {
@@ -283,7 +299,7 @@ function ProblemList() {
 
     try {
       await axios.put(
-        `${API_BASE_URL}/problems/${selectedProblem.problemId}`,
+        `${API_BASE_URL}/api/problems/${selectedProblem.problemId}`,
         {
           ...selectedProblem,
           tags: editingTags,
@@ -321,26 +337,6 @@ function ProblemList() {
       });
     }
   };
-
-  useEffect(() => {
-    // Initial fetch
-    fetchProblems();
-
-    // Set up auto-refresh every 5 minutes (300,000 milliseconds)
-    const intervalId = setInterval(() => {
-      console.log('Auto-refreshing problems...');
-      fetchProblems();
-    }, 5 * 60 * 1000);
-
-    // Cleanup interval on component unmount
-    return () => clearInterval(intervalId);
-  }, []);
-
-  useEffect(() => {
-    if (Array.isArray(problems)) {
-      filterProblems();
-    }
-  }, [problems, searchQuery, filterPlatform, filterResult, filterTag]);
 
   const getFolderName = (problem) => {
     if (!problem) return '';
@@ -649,45 +645,139 @@ function ProblemList() {
         </Box>
 
         <SimpleGrid columns={densitySettings[cardDensity].columns} spacing={densitySettings[cardDensity].spacing}>
-          {filteredProblems.map(renderProblemCard)}
+          {filteredProblems.map((problem) => (
+            <Box
+              key={problem.problemId}
+              bg="white"
+              p={4}
+              borderRadius="xl"
+              boxShadow="sm"
+              border="1px"
+              borderColor="gray.100"
+              onClick={() => handleCardClick(problem)}
+              cursor="pointer"
+              transition="all 0.2s"
+              _hover={{
+                transform: 'translateY(-2px)',
+                boxShadow: 'md',
+              }}
+            >
+              <VStack align="stretch" spacing={3}>
+                <HStack justify="space-between">
+                  <Badge
+                    colorScheme={getPlatformColor(problem.platform)}
+                    px={2}
+                    py={1}
+                    borderRadius="md"
+                  >
+                    {problem.platform}
+                  </Badge>
+                  <Badge
+                    colorScheme={getResultColor(problem.result)}
+                    variant={problem.result === 'TLE' ? "solid" : "outline"}
+                    px={3}
+                    py={1}
+                    borderRadius="md"
+                  >
+                    {formatResult(problem.result)}
+                  </Badge>
+                </HStack>
+
+                <Text
+                  fontWeight="semibold"
+                  fontSize="md"
+                  noOfLines={2}
+                  title={problem.name}
+                >
+                  {formatProblemName(problem.name, problem.platform)}
+                </Text>
+
+                <Wrap spacing={1}>
+                  {(problem.tags || []).map((tag, index) => (
+                    <WrapItem key={index}>
+                      <Tag
+                        size="sm"
+                        colorScheme="blue"
+                        variant="outline"
+                        borderRadius="full"
+                      >
+                        {tag}
+                      </Tag>
+                    </WrapItem>
+                  ))}
+                </Wrap>
+
+                {problem.notes && (
+                  <Text fontSize="sm" color="gray.600" noOfLines={2}>
+                    {problem.notes}
+                  </Text>
+                )}
+              </VStack>
+            </Box>
+          ))}
         </SimpleGrid>
 
         {/* Edit Modal */}
         <Modal isOpen={isEditOpen} onClose={onEditClose} size="xl">
           <ModalOverlay />
-          <ModalContent>
-            <ModalHeader>Edit Problem</ModalHeader>
+          <ModalContent maxW="90vw">
+            <ModalHeader>
+              {selectedProblem?.name}
+            </ModalHeader>
             <ModalCloseButton />
             <ModalBody>
-              {selectedProblem && (
-                <VStack spacing={4} align="stretch">
-                  <Text fontWeight="bold">{selectedProblem.name}</Text>
-                  <HStack>
-                    <Text>Tags:</Text>
-                    <Wrap>
-                      {editingTags.map((tag, index) => (
-                        <WrapItem key={index}>
-                          <Tag
-                            size="md"
-                            borderRadius="full"
-                            variant="solid"
-                            colorScheme="blue"
-                          >
-                            <TagCloseButton
-                              onClick={() => {
-                                setEditingTags(prev =>
-                                  prev.filter((_, i) => i !== index)
-                                );
-                              }}
-                            />
-                            {tag}
-                          </Tag>
-                        </WrapItem>
-                      ))}
-                    </Wrap>
-                  </HStack>
+              <VStack spacing={4} align="stretch">
+                {/* Source Code Section */}
+                <Box>
+                  <Heading size="sm" mb={2}>Source Code</Heading>
+                  <Box
+                    bg="gray.50"
+                    p={4}
+                    borderRadius="md"
+                    maxH="400px"
+                    overflowY="auto"
+                  >
+                    <pre style={{ whiteSpace: 'pre-wrap' }}>{codeContent}</pre>
+                  </Box>
+                  {selectedProblem && (
+                    <Link
+                      href={getGitHubUrl(selectedProblem)}
+                      isExternal
+                      color="blue.500"
+                      mt={2}
+                      display="block"
+                    >
+                      View on GitHub
+                    </Link>
+                  )}
+                </Box>
+
+                {/* Tags Section */}
+                <Box>
+                  <Heading size="sm" mb={2}>Tags</Heading>
+                  <Wrap mb={2}>
+                    {editingTags.map((tag, index) => (
+                      <WrapItem key={index}>
+                        <Tag
+                          size="md"
+                          borderRadius="full"
+                          variant="solid"
+                          colorScheme="blue"
+                        >
+                          {tag}
+                          <TagCloseButton
+                            onClick={() => {
+                              setEditingTags(prev =>
+                                prev.filter((_, i) => i !== index)
+                              );
+                            }}
+                          />
+                        </Tag>
+                      </WrapItem>
+                    ))}
+                  </Wrap>
                   <Input
-                    placeholder="Add new tag"
+                    placeholder="Add new tag (press Enter)"
                     value={newTag}
                     onChange={(e) => setNewTag(e.target.value)}
                     onKeyPress={(e) => {
@@ -696,46 +786,25 @@ function ProblemList() {
                       }
                     }}
                   />
+                </Box>
+
+                {/* Notes Section */}
+                <Box>
+                  <Heading size="sm" mb={2}>Notes</Heading>
                   <Textarea
-                    placeholder="Notes"
                     value={editingNotes}
                     onChange={(e) => setEditingNotes(e.target.value)}
+                    placeholder="Add your notes here..."
                     rows={4}
                   />
-                </VStack>
-              )}
+                </Box>
+              </VStack>
             </ModalBody>
             <ModalFooter>
               <Button colorScheme="blue" mr={3} onClick={handleSaveChanges}>
-                Save
+                Save Changes
               </Button>
               <Button onClick={onEditClose}>Cancel</Button>
-            </ModalFooter>
-          </ModalContent>
-        </Modal>
-
-        {/* Code Modal */}
-        <Modal isOpen={isCodeOpen} onClose={onCodeClose} size="full">
-          <ModalOverlay />
-          <ModalContent>
-            <ModalHeader>Source Code</ModalHeader>
-            <ModalCloseButton />
-            <ModalBody>
-              <pre style={{ whiteSpace: 'pre-wrap' }}>{codeContent}</pre>
-              {selectedProblem && (
-                <Link
-                  href={getGitHubUrl(selectedProblem)}
-                  isExternal
-                  color="blue.500"
-                  mt={4}
-                  display="block"
-                >
-                  View on GitHub
-                </Link>
-              )}
-            </ModalBody>
-            <ModalFooter>
-              <Button onClick={onCodeClose}>Close</Button>
             </ModalFooter>
           </ModalContent>
         </Modal>

@@ -1,5 +1,15 @@
 import React from 'react';
-import { ChakraProvider, Box, Container, Heading, Text, Link, HStack, Center, Spacer } from '@chakra-ui/react';
+import {
+  ChakraProvider,
+  Container,
+  VStack,
+  Box,
+  Heading,
+  Text,
+  Link,
+  HStack,
+  Center,
+} from '@chakra-ui/react';
 import ProblemList, { ProblemListProvider, ProblemListStatusIndicator } from './components/ProblemList';
 
 function App() {
