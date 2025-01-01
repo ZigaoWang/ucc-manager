@@ -13,15 +13,26 @@ const port = process.env.PORT || 4001;
 // Configure CORS for both development and production
 const allowedOrigins = [
   'http://localhost:4000',
-  'https://ucc-manager-6zi8gaxm5-zigao-wangs-projects.vercel.app',
-  process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null
-].filter(Boolean);
+  'https://ucc-manager.vercel.app',
+  'https://ucc-manager-git-main-zigao-wangs-projects.vercel.app',
+  'https://ucc-manager-6zi8gaxm5-zigao-wangs-projects.vercel.app'
+];
+
+if (process.env.VERCEL_URL) {
+  allowedOrigins.push(`https://${process.env.VERCEL_URL}`);
+}
 
 app.use(cors({
   origin: function(origin, callback) {
-    if (!origin || allowedOrigins.includes(origin)) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) {
+      return callback(null, true);
+    }
+
+    if (allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
+      console.error('CORS error for origin:', origin);
       callback(new Error('Not allowed by CORS'));
     }
   },
@@ -39,10 +50,11 @@ async function readProblems() {
     const stats = await fs.stat(PROBLEMS_FILE);
     const lastModified = stats.mtime.toISOString();
     const problems = JSON.parse(data);
-    return { problems, lastModified };
+    return { problems: Array.isArray(problems) ? problems : [], lastModified };
   } catch (error) {
+    console.error('Error reading problems file:', error);
     if (error.code === 'ENOENT') {
-      return { problems: [], lastModified: null };
+      return { problems: [], lastModified: new Date().toISOString() };
     }
     throw error;
   }
@@ -50,7 +62,9 @@ async function readProblems() {
 
 // Helper function to write problems
 async function writeProblems(problems) {
-  await fs.writeFile(PROBLEMS_FILE, JSON.stringify(problems, null, 2));
+  // Ensure problems is an array
+  const problemsArray = Array.isArray(problems) ? problems : [];
+  await fs.writeFile(PROBLEMS_FILE, JSON.stringify(problemsArray, null, 2));
 }
 
 // Function to run the scan script
@@ -74,11 +88,16 @@ runScan();
 // Get all problems
 app.get('/api/problems', async (req, res) => {
   try {
+    console.log('GET /api/problems request from:', req.get('origin'));
     const { problems, lastModified } = await readProblems();
-    res.json({ problems, lastModified });
+    res.json({ problems: Array.isArray(problems) ? problems : [], lastModified });
   } catch (error) {
     console.error('Error reading problems:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ 
+      error: 'Internal server error',
+      problems: [],
+      lastModified: new Date().toISOString()
+    });
   }
 });
 

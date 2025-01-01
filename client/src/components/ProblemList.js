@@ -167,10 +167,18 @@ function ProblemList() {
         withCredentials: true
       });
       console.log('Fetched problems:', response.data);
+      
+      // Add error handling for response data
+      if (!response.data || !Array.isArray(response.data.problems)) {
+        console.error('Invalid response data:', response.data);
+        throw new Error('Invalid response data from server');
+      }
+      
       setProblems(response.data.problems);
       setLastFetched(response.data.lastModified);
     } catch (error) {
       console.error('Error fetching problems:', error);
+      setProblems([]); // Set empty array on error
       toast({
         title: 'Error',
         description: 'Failed to fetch problems: ' + (error.response?.data?.error || error.message),
