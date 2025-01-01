@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, createContext, useContext } from 'react';
 import axios from 'axios';
 import {
   Box,
@@ -38,6 +38,7 @@ import {
   WrapItem
 } from '@chakra-ui/react';
 import { ChevronDownIcon, SearchIcon } from '@chakra-ui/icons';
+import StatusIndicator from './StatusIndicator';
 
 const API_BASE_URL = 'http://localhost:4001/api';
 
@@ -100,7 +101,27 @@ const formatProblemName = (name, platform) => {
   return name;
 };
 
-const ProblemList = () => {
+// Create context
+export const ProblemListContext = createContext(null);
+
+// Create Provider component
+export function ProblemListProvider({ children }) {
+  const [lastFetched, setLastFetched] = useState(null);
+  
+  return (
+    <ProblemListContext.Provider value={{ lastFetched, setLastFetched }}>
+      {children}
+    </ProblemListContext.Provider>
+  );
+}
+
+// Create StatusIndicator component
+export function ProblemListStatusIndicator() {
+  const { lastFetched } = useContext(ProblemListContext);
+  return <StatusIndicator lastFetched={lastFetched} />;
+}
+
+function ProblemList() {
   const [problems, setProblems] = useState([]);
   const [filteredProblems, setFilteredProblems] = useState([]);
   const [selectedProblem, setSelectedProblem] = useState(null);
@@ -137,31 +158,17 @@ const ProblemList = () => {
   const { isOpen: isCodeOpen, onOpen: onCodeOpen, onClose: onCodeClose } = useDisclosure();
   const [codeContent, setCodeContent] = useState('');
   const toast = useToast();
-
-  useEffect(() => {
-    fetchProblems();
-  }, []);
-
-  useEffect(() => {
-    filterProblems();
-  }, [problems, searchQuery, filterPlatform, filterResult, filterTag]);
-
-  useEffect(() => {
-    // Update allTags whenever problems change
-    const tags = new Set();
-    problems.forEach(problem => {
-      problem.tags?.forEach(tag => tags.add(tag));
-    });
-    setAllTags(Array.from(tags).sort());
-  }, [problems]);
+  const { lastFetched, setLastFetched } = useContext(ProblemListContext);
 
   const fetchProblems = async () => {
     try {
+      console.log('Fetching problems...');
       const response = await axios.get(`${API_BASE_URL}/problems`, {
         withCredentials: true
       });
       console.log('Fetched problems:', response.data);
-      setProblems(response.data);
+      setProblems(response.data.problems);
+      setLastFetched(response.data.lastModified);
     } catch (error) {
       console.error('Error fetching problems:', error);
       toast({
@@ -174,15 +181,39 @@ const ProblemList = () => {
     }
   };
 
+  useEffect(() => {
+    // Initial fetch
+    fetchProblems();
+
+    // Set up auto-refresh every 5 minutes (300,000 milliseconds)
+    const intervalId = setInterval(() => {
+      console.log('Auto-refreshing problems...');
+      fetchProblems();
+    }, 5 * 60 * 1000);
+
+    // Cleanup interval on component unmount
+    return () => clearInterval(intervalId);
+  }, []);
+
+  useEffect(() => {
+    filterProblems();
+  }, [problems, searchQuery, filterPlatform, filterResult, filterTag]);
+
+  useEffect(() => {
+    const tags = new Set();
+    problems.forEach(problem => {
+      problem.tags?.forEach(tag => tags.add(tag));
+    });
+    setAllTags(Array.from(tags).sort());
+  }, [problems]);
+
   const filterProblems = () => {
     let filtered = [...problems];
 
-    // Platform filter
     if (filterPlatform !== 'all') {
       filtered = filtered.filter(p => p.platform.toLowerCase() === filterPlatform.toLowerCase());
     }
 
-    // Result filter
     if (filterResult !== 'all') {
       filtered = filtered.filter(p => {
         const status = p.name?.toLowerCase().startsWith('tle-') ? 'tle' : p.result?.toLowerCase();
@@ -190,12 +221,10 @@ const ProblemList = () => {
       });
     }
 
-    // Tag filter
     if (filterTag) {
       filtered = filtered.filter(p => p.tags?.includes(filterTag));
     }
 
-    // Search query
     if (searchQuery) {
       filtered = filtered.filter(p =>
         p.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -243,13 +272,12 @@ const ProblemList = () => {
   };
 
   const handleViewProblem = async (problem) => {
-    console.log('Selected problem:', problem);  // Debug log
-    setSelectedProblem(problem);  // Store the whole problem object
+    console.log('Selected problem:', problem);  
+    setSelectedProblem(problem);  
     setEditingTags(problem.tags || []);
     setEditingNotes(problem.notes || '');
     
     try {
-      // Fetch source code
       const rawUrl = getRawGitHubUrl(problem);
       const response = await axios.get(rawUrl);
       setCodeContent(response.data);
@@ -279,7 +307,6 @@ const ProblemList = () => {
         notes: editingNotes
       });
 
-      // Send only the updated fields
       const response = await axios.put(
         `${API_BASE_URL}/problems/${selectedProblem.problemId}`,
         {
@@ -291,7 +318,6 @@ const ProblemList = () => {
         }
       );
 
-      // Update local state with the response data
       setProblems(prevProblems => 
         prevProblems.map(p => 
           p.problemId === selectedProblem.problemId ? response.data : p
@@ -468,6 +494,10 @@ const ProblemList = () => {
       </Box>
     );
   };
+
+  // Attach components to ProblemList
+  ProblemList.Provider = ProblemListProvider;
+  ProblemList.StatusIndicator = ProblemListStatusIndicator;
 
   return (
     <Container maxW="container.xl" py={8}>
@@ -686,6 +716,6 @@ const ProblemList = () => {
       </VStack>
     </Container>
   );
-};
+}
 
 export default ProblemList;

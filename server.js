@@ -2,15 +2,32 @@ const express = require('express');
 const cors = require('cors');
 const fs = require('fs').promises;
 const path = require('path');
+const { exec } = require('child_process');
+const util = require('util');
+const execAsync = util.promisify(exec);
 require('dotenv').config();
 
 const app = express();
 const port = process.env.PORT || 4001;
 
+// Configure CORS for both development and production
+const allowedOrigins = [
+  'http://localhost:4000',
+  'https://ucc-manager-6zi8gaxm5-zigao-wangs-projects.vercel.app',
+  process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null
+].filter(Boolean);
+
 app.use(cors({
-  origin: 'http://localhost:4000',
+  origin: function(origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true
 }));
+
 app.use(express.json());
 
 const PROBLEMS_FILE = path.join(__dirname, 'data', 'problems.json');
@@ -19,10 +36,13 @@ const PROBLEMS_FILE = path.join(__dirname, 'data', 'problems.json');
 async function readProblems() {
   try {
     const data = await fs.readFile(PROBLEMS_FILE, 'utf-8');
-    return JSON.parse(data);
+    const stats = await fs.stat(PROBLEMS_FILE);
+    const lastModified = stats.mtime.toISOString();
+    const problems = JSON.parse(data);
+    return { problems, lastModified };
   } catch (error) {
     if (error.code === 'ENOENT') {
-      return [];
+      return { problems: [], lastModified: null };
     }
     throw error;
   }
@@ -33,11 +53,29 @@ async function writeProblems(problems) {
   await fs.writeFile(PROBLEMS_FILE, JSON.stringify(problems, null, 2));
 }
 
+// Function to run the scan script
+async function runScan() {
+  try {
+    console.log('Starting problem scan...');
+    const scriptPath = path.join(__dirname, 'scripts', 'scanProblems.js');
+    await execAsync(`node ${scriptPath}`);
+    console.log('Problem scan completed successfully');
+  } catch (error) {
+    console.error('Error running problem scan:', error);
+  }
+}
+
+// Run scan every 5 minutes
+setInterval(runScan, 5 * 60 * 1000);
+
+// Run initial scan when server starts
+runScan();
+
 // Get all problems
 app.get('/api/problems', async (req, res) => {
   try {
-    const problems = await readProblems();
-    res.json(problems);
+    const { problems, lastModified } = await readProblems();
+    res.json({ problems, lastModified });
   } catch (error) {
     console.error('Error reading problems:', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -47,7 +85,7 @@ app.get('/api/problems', async (req, res) => {
 // Add a problem
 app.post('/api/problems', async (req, res) => {
   try {
-    const problems = await readProblems();
+    const { problems } = await readProblems();
     const newProblem = {
       problemId: Date.now().toString(),
       ...req.body,
@@ -65,7 +103,7 @@ app.post('/api/problems', async (req, res) => {
 // Update a problem
 app.put('/api/problems/:id', async (req, res) => {
   try {
-    const problems = await readProblems();
+    const { problems } = await readProblems();
     console.log('Looking for problem with ID:', req.params.id);
     console.log('Available problems:', problems.map(p => p.problemId));
     

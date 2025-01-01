@@ -8,7 +8,9 @@
     "notes": "",
     "result": "Accepted",
     "createdAt": "2024-12-31T12:47:57.024Z",
-    "sourceFile": "/Users/zigaowang/Documents/GitHub/ucc-manager/usaco/595/main.cpp"
+    "sourceFile": "https://github.com/ZigaoWang/usaco-cses-cf/blob/main/usaco/595/main.cpp",
+    "rawSourceFile": "https://raw.githubusercontent.com/ZigaoWang/usaco-cses-cf/main/usaco/595/main.cpp",
+    "folderName": "595"
   },
   {
     "platform": "usaco",
@@ -21,8 +23,10 @@
     "notes": "ff",
     "result": "Accepted",
     "createdAt": "2024-12-31T12:47:57.438Z",
-    "sourceFile": "/Users/zigaowang/Documents/GitHub/ucc-manager/usaco/668/main.cpp",
-    "updatedAt": "2024-12-31T15:15:13.035Z"
+    "sourceFile": "https://github.com/ZigaoWang/usaco-cses-cf/blob/main/usaco/668/main.cpp",
+    "updatedAt": "2024-12-31T15:15:13.035Z",
+    "rawSourceFile": "https://raw.githubusercontent.com/ZigaoWang/usaco-cses-cf/main/usaco/668/main.cpp",
+    "folderName": "668"
   },
   {
     "platform": "usaco",
@@ -35,8 +39,10 @@
     "notes": "test",
     "result": "Accepted",
     "createdAt": "2024-12-31T12:47:57.988Z",
-    "sourceFile": "/Users/zigaowang/Documents/GitHub/ucc-manager/usaco/788/main.cpp",
-    "updatedAt": "2024-12-31T15:14:49.820Z"
+    "sourceFile": "https://github.com/ZigaoWang/usaco-cses-cf/blob/main/usaco/788/main.cpp",
+    "updatedAt": "2024-12-31T15:14:49.820Z",
+    "rawSourceFile": "https://raw.githubusercontent.com/ZigaoWang/usaco-cses-cf/main/usaco/788/main.cpp",
+    "folderName": "788"
   },
   {
     "platform": "usaco",
@@ -47,7 +53,9 @@
     "notes": "",
     "result": "Accepted",
     "createdAt": "2024-12-31T12:47:58.395Z",
-    "sourceFile": "/Users/zigaowang/Documents/GitHub/ucc-manager/usaco/895/main.cpp"
+    "sourceFile": "https://github.com/ZigaoWang/usaco-cses-cf/blob/main/usaco/895/main.cpp",
+    "rawSourceFile": "https://raw.githubusercontent.com/ZigaoWang/usaco-cses-cf/main/usaco/895/main.cpp",
+    "folderName": "895"
   },
   {
     "platform": "cses",
@@ -58,7 +66,9 @@
     "notes": "",
     "result": "Accepted",
     "createdAt": "2024-12-31T12:47:59.214Z",
-    "sourceFile": "/Users/zigaowang/Documents/GitHub/ucc-manager/cses/1068-weird-algorithm/main.cpp"
+    "sourceFile": "https://github.com/ZigaoWang/usaco-cses-cf/blob/main/cses/1068-weird-algorithm/main.cpp",
+    "rawSourceFile": "https://raw.githubusercontent.com/ZigaoWang/usaco-cses-cf/main/cses/1068-weird-algorithm/main.cpp",
+    "folderName": "1068-weird-algorithm"
   },
   {
     "platform": "cses",
@@ -71,8 +81,10 @@
     "notes": "fwf",
     "result": "Accepted",
     "createdAt": "2024-12-31T12:47:59.627Z",
-    "sourceFile": "/Users/zigaowang/Documents/GitHub/ucc-manager/cses/1069-repetitions/main.cpp",
-    "updatedAt": "2024-12-31T15:15:01.358Z"
+    "sourceFile": "https://github.com/ZigaoWang/usaco-cses-cf/blob/main/cses/1069-repetitions/main.cpp",
+    "updatedAt": "2024-12-31T15:15:01.358Z",
+    "rawSourceFile": "https://raw.githubusercontent.com/ZigaoWang/usaco-cses-cf/main/cses/1069-repetitions/main.cpp",
+    "folderName": "1069-repetitions"
   },
   {
     "platform": "cses",
@@ -83,7 +95,9 @@
     "notes": "",
     "result": "Accepted",
     "createdAt": "2024-12-31T12:48:00.033Z",
-    "sourceFile": "/Users/zigaowang/Documents/GitHub/ucc-manager/cses/1083-missing-number/main.cpp"
+    "sourceFile": "https://github.com/ZigaoWang/usaco-cses-cf/blob/main/cses/1083-missing-number/main.cpp",
+    "rawSourceFile": "https://raw.githubusercontent.com/ZigaoWang/usaco-cses-cf/main/cses/1083-missing-number/main.cpp",
+    "folderName": "1083-missing-number"
   },
   {
     "platform": "cses",
@@ -94,7 +108,9 @@
     "notes": "",
     "result": "Accepted",
     "createdAt": "2024-12-31T12:48:00.442Z",
-    "sourceFile": "/Users/zigaowang/Documents/GitHub/ucc-manager/cses/1192-counting-rooms/main.cpp"
+    "sourceFile": "https://github.com/ZigaoWang/usaco-cses-cf/blob/main/cses/1192-counting-rooms/main.cpp",
+    "rawSourceFile": "https://raw.githubusercontent.com/ZigaoWang/usaco-cses-cf/main/cses/1192-counting-rooms/main.cpp",
+    "folderName": "1192-counting-rooms"
   },
   {
     "platform": "cses",
@@ -105,7 +121,9 @@
     "notes": "",
     "result": "Accepted",
     "createdAt": "2024-12-31T12:48:00.840Z",
-    "sourceFile": "/Users/zigaowang/Documents/GitHub/ucc-manager/cses/1666-building-roads/main.cpp"
+    "sourceFile": "https://github.com/ZigaoWang/usaco-cses-cf/blob/main/cses/1666-building-roads/main.cpp",
+    "rawSourceFile": "https://raw.githubusercontent.com/ZigaoWang/usaco-cses-cf/main/cses/1666-building-roads/main.cpp",
+    "folderName": "1666-building-roads"
   },
   {
     "platform": "cses",
@@ -116,7 +134,9 @@
     "notes": "",
     "result": "Accepted",
     "createdAt": "2024-12-31T12:48:01.226Z",
-    "sourceFile": "/Users/zigaowang/Documents/GitHub/ucc-manager/cses/1674-subordinates/main.cpp"
+    "sourceFile": "https://github.com/ZigaoWang/usaco-cses-cf/blob/main/cses/1674-subordinates/main.cpp",
+    "rawSourceFile": "https://raw.githubusercontent.com/ZigaoWang/usaco-cses-cf/main/cses/1674-subordinates/main.cpp",
+    "folderName": "1674-subordinates"
   },
   {
     "platform": "cses",
@@ -127,7 +147,9 @@
     "notes": "",
     "result": "Time Limit Exceeded",
     "createdAt": "2024-12-31T12:48:01.602Z",
-    "sourceFile": "/Users/zigaowang/Documents/GitHub/ucc-manager/cses/tle-1193-labyrinth/main.cpp"
+    "sourceFile": "https://github.com/ZigaoWang/usaco-cses-cf/blob/main/cses/tle-1193-labyrinth/main.cpp",
+    "rawSourceFile": "https://raw.githubusercontent.com/ZigaoWang/usaco-cses-cf/main/cses/tle-1193-labyrinth/main.cpp",
+    "folderName": "tle-1193-labyrinth"
   },
   {
     "platform": "cf",
@@ -138,6 +160,8 @@
     "notes": "",
     "result": "Accepted",
     "createdAt": "2024-12-31T12:48:02.491Z",
-    "sourceFile": "/Users/zigaowang/Documents/GitHub/ucc-manager/cf/279-b-two-pointer/main.cpp"
+    "sourceFile": "https://github.com/ZigaoWang/usaco-cses-cf/blob/main/cf/279-b-two-pointer/main.cpp",
+    "rawSourceFile": "https://raw.githubusercontent.com/ZigaoWang/usaco-cses-cf/main/cf/279-b-two-pointer/main.cpp",
+    "folderName": "279-b-two-pointer"
   }
 ]
