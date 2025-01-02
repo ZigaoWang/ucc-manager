@@ -1,5 +1,8 @@
 # UCC Manager
 
+> [!TIP]
+> For IDs in the questions on different platforms, please use [this navigator](https://github.com/ZigaoWang/usaco-cses-cf-navigator) made by me.
+
 A web application for managing competitive programming solutions. Track your solutions from USACO, CSES, and Codeforces, add tags, and write notes.
 
 ## Features
