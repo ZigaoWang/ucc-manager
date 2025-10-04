@@ -2,3 +2,12 @@ node_modules
 .env
 .vercel
 data/problems.json
+
+# macOS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
